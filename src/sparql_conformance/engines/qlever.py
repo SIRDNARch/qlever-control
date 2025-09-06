@@ -8,7 +8,7 @@ from typing import Tuple, List
 import io
 
 from qlever.commands.query import QueryCommand
-from qlever.log import log, mute_log
+from qlever.log import mute_log
 from qlever.util import run_command
 from qlever.commands.start import StartCommand
 from qlever.commands.stop import StopCommand
@@ -34,7 +34,7 @@ class QLeverManager(EngineManager):
             host_name=config.server_address,
             port=config.port,
             sparql_endpoint=None,
-            accept=self._get_accept_header(result_format),
+            accept=util.get_accept_header(result_format),
             access_token='abc',
             pin_to_cache=False,
             no_time=True,
@@ -65,7 +65,7 @@ class QLeverManager(EngineManager):
                 write_ttl_file(graph_path_new, rdf_xml_to_turtle(graph_path, graph_name))
                 graph_path = graph_path_new
             else:
-                graph_path = self._copy_graph_to_workdir(graph_path, os.getcwd())
+                graph_path = util.copy_graph_to_workdir(graph_path, os.getcwd())
             graphs.append((graph_path, graph_name))
 
         index_success, index_log = self._index(graphs)
@@ -92,7 +92,7 @@ class QLeverManager(EngineManager):
             show=False
         )
         try:
-            with mute_log():
+            with mute_log(50):
                 result = StopCommand().execute(args)
         except Exception as e:
             error_output = str(e)
@@ -102,6 +102,8 @@ class QLeverManager(EngineManager):
     def _start_server(self, host: str, port: int) -> Tuple[bool, str]:
         args = Namespace(
             name='sparql-conformance-index',
+            description='',
+            text_description='',
             server_binary='ServerMain',
             host_name=host,
             port=port,
@@ -120,8 +122,6 @@ class QLeverManager(EngineManager):
             system='docker',
             image='docker.io/adfreiburg/qlever:latest',
             server_container='sparql-conformance-server',
-            description=None,
-            text_description=None,
             kill_existing_with_same_port=False,
             no_warmup=True,
             run_in_foreground=False,
@@ -159,7 +159,8 @@ class QLeverManager(EngineManager):
             show=None,
             overwrite_existing=True,
             index_binary='IndexBuilderMain',
-            index_container='sparql-conformance-container'
+            index_container='sparql-conformance-container',
+            vocabulary_type='on-disk-compressed'
         )
         try:
             with mute_log():
@@ -184,29 +185,3 @@ class QLeverManager(EngineManager):
             }
             input_list.append(entry)
         return json.dumps(input_list)
-
-    def _copy_graph_to_workdir(self, graph_path: str, workdir: str) -> str:
-        """
-        Copy the graph to the docker working directory and returns the new relative path.
-
-        Args:
-            graph_path (str): Path to the source file.
-            workdir (str): Path to the working directory mounted in docker.
-
-        Returns:
-            str: Basename, usable inside the container.
-        """
-        src = Path(graph_path).resolve()
-        dest = Path(workdir).resolve() / src.name
-        shutil.copy(src, dest)
-        return src.name
-
-    def _get_accept_header(self, result_format: str) -> str:
-        format_headers = {
-            "csv": "text/csv",
-            "tsv": "text/tab-separated-values",
-            "srx": "application/sparql-results+xml",
-            "ttl": "text/turtle",
-            "json": "application/sparql-results+json"
-        }
-        return format_headers.get(result_format, "application/sparql-results+json")

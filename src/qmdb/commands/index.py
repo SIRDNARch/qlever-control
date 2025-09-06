@@ -60,12 +60,13 @@ class IndexCommand(QleverCommand):
             working_directory="/data",
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test = False) -> bool:
         system = args.system
         input_files = args.input_files
 
         index_cmd = f"{args.index_binary} {input_files} index"
-        index_cmd += f" | tee {args.name}.index-log.txt"
+        log_name = f"{args.name}.index-log.txt"
+        index_cmd += f" > {log_name} 2>&1" if called_from_conformance_test else f" | tee {log_name}"
 
         if args.system == "native":
             cmd_to_show = index_cmd

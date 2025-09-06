@@ -31,7 +31,7 @@ class QLeverBinaryManager(EngineManager):
         return index_success, server_success, index_log, server_log
 
     def query(self, config: Config, query: str, query_type: str, result_format: str) -> Tuple[int, str]:
-        accept = self._get_accept_header(result_format)
+        accept = util.get_accept_header(result_format)
         content_type = "application/sparql-query; charset=utf-8" if query_type == "rq" else "application/sparql-update; charset=utf-8"
 
         url = f"{config.server_address}:{config.port}?access-token=abc"
@@ -121,13 +121,3 @@ class QLeverBinaryManager(EngineManager):
             "syntax-test-mode": "true"
         }
         requests.get(url, params)
-
-    def _get_accept_header(self, result_format: str) -> str:
-        format_headers = {
-            "csv": "text/csv",
-            "tsv": "text/tab-separated-values",
-            "srx": "application/sparql-results+xml",
-            "ttl": "text/turtle",
-            "json": "application/sparql-results+json"
-        }
-        return format_headers.get(result_format, "application/sparql-results+json")

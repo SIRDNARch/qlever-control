@@ -4,7 +4,7 @@ from qoxigraph.commands.query import QueryCommand as QoxigraphQueryCommand
 
 
 class QueryCommand(QoxigraphQueryCommand):
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test = False) -> bool:
         if not args.sparql_endpoint:
             args.sparql_endpoint = f"localhost:{args.port}/sparql"
-        super().execute(args)
+        super().execute(args, called_from_conformance_test)

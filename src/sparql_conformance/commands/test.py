@@ -1,6 +1,4 @@
 from qlever.command import QleverCommand
-from qlever.commands.index import IndexCommand
-from sparql_conformance.engines.qlever import QLeverManager
 from sparql_conformance.testsuite import TestSuite
 from sparql_conformance.config_manager import initialize_config
 from sparql_conformance.extract_tests import extract_tests
@@ -14,9 +12,9 @@ class TestCommand(QleverCommand):
         self.options = [
             'qlever',
             'qlever-binaries',
-            'qmdb'
+            'mdb',
+            'oxigraph'
         ]
-        pass
 
     def description(self) -> str:
         return "Run SPARQL conformance tests against different engines"
@@ -39,27 +37,15 @@ class TestCommand(QleverCommand):
             required=True,
             help='SPARQL engine to test'
         )
-        subparser.add_argument(
-            '--test-suite-path',
-            required=True,
-            help='Path to W3C SPARQL test suite'
-        )
-        subparser.add_argument(
-            '--test-type',
-            choices=['query', 'update', 'syntax', 'protocol'],
-            default='all',
-            help='Type of conformance tests to run'
-        )
 
     def execute(self, args) -> bool:
-#         test = (('/Users/ricoandris/Desktop/master-project/conformance/rdf-tests/sparql/sparql11/csv-tsv-res/data.ttl', '-'),)#,
-#          #('/Users/ricoandris/Desktop/master-project/conformance/rdf-tests/sparql/sparql11/csv-tsv-res/data2.tt',
-#           #'data2'))
+#         test = (('/Users/ricoandris/Desktop/master-project/conformance/rdf-tests/sparql/sparql11/csv-tsv-res/data.ttl', '-'),
+#                 ('/Users/ricoandris/Desktop/master-project/conformance/rdf-tests/sparql/sparql11/csv-tsv-res/data2.ttl','data2'))
 #         query = '''PREFIX : <http://example.org/>
 #
 # SELECT * WHERE { ?s ?p ?o} ORDER BY ?s ?p ?o'''
 #         config = initialize_config()
-#         m = QLeverManager()
+#         m = QMDBManager()
 #         m.setup(config, test)
 #         m.query(config,query,'rq','csv')
 #         m.cleanup(config)

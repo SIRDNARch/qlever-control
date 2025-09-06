@@ -26,7 +26,7 @@ COPY --from=clone /mdb-src/third_party/antlr4-runtime-4.13.1 third_party/antlr4-
 
 # Build MillenniumDB
 RUN cmake -B build -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=./ && \
-    cmake --build build -j $(($(getconf _NPROCESSORS_ONLN)-1)) --target install
+    cmake --build build -j $(($(getconf _NPROCESSORS_ONLN)-1)) --target install --parallel 1
 
 COPY --from=clone /mdb-src/browser browser
 

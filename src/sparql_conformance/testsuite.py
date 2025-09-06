@@ -7,7 +7,7 @@ import json
 import bz2
 
 from sparql_conformance.engines.qlever_binary import QLeverBinaryManager
-from sparql_conformance.models import TestObject, Config, SERVER_ERROR, FAILED, PASSED, INTENDED, QUERY_EXCEPTION, REQUEST_ERROR, UNDEFINED_ERROR, INDEX_BUILD_ERROR, SERVER_ERROR, NOT_TESTED, RESULTS_NOT_THE_SAME, INTENDED_MSG, EXPECTED_EXCEPTION, NOT_SUPPORTED
+from sparql_conformance.models import TestObject, Config, FAILED, PASSED, QUERY_EXCEPTION, REQUEST_ERROR, QUERY_ERROR, INDEX_BUILD_ERROR, SERVER_ERROR, RESULTS_NOT_THE_SAME, EXPECTED_EXCEPTION, NOT_SUPPORTED, QUERY_ERRORS, CONTENT_TYPE_NOT_SUPPORTED
 import sparql_conformance.models as vars
 from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.xml_tools import compare_xml
@@ -64,10 +64,8 @@ class TestSuite:
             status, error_type, expected_html, test_html, expected_red, test_red = compare_json(
                 expected_string, query_result, self.config.alias, self.config.number_types)
         elif result_format == "csv" or result_format == "tsv":
-            print("CSV-TSV")
             status, error_type, expected_html, test_html, expected_red, test_red = compare_sv(
                 expected_string, query_result, result_format, self.config.alias)
-            print(status)
         elif result_format == "ttl":
             status, error_type, expected_html, test_html, expected_red, test_red = compare_ttl(
                 expected_string, query_result)
@@ -184,7 +182,6 @@ class TestSuite:
         Returns:
             True if the environment is successfully prepared, False otherwise.
         """
-        print(f"Preparing test environment for graph: {graph_paths}")
         self.engine_manager.cleanup(self.config)
         index_success, server_success, index_log, server_log = self.engine_manager.setup(self.config, graph_paths)
         if not index_success:
@@ -208,11 +205,13 @@ class TestSuite:
         elif "HTTP Request" in query_response[1]:
             error_type = REQUEST_ERROR
             query_log = query_response[1]
-        elif "not supported" in query_response[1] and "content type" in query_response[1]:
+        elif "not supported" in query_response[1]:
             error_type = NOT_SUPPORTED
+            if "content type" in query_response[1]:
+                error_type = CONTENT_TYPE_NOT_SUPPORTED
             query_log = query_response[1]
         else:
-            error_type = UNDEFINED_ERROR
+            error_type = QUERY_ERROR
             query_log = query_response[1]
         setattr(test, "query_log", query_log)
         self.update_test_status(test, FAILED, error_type)
@@ -228,6 +227,7 @@ class TestSuite:
                 continue
 
             for test in graphs_list_of_tests[graph]:
+                print(f"Running: {test.name}")
                 query_result = self.engine_manager.query(
                     self.config,
                     test.query_file,
@@ -254,6 +254,7 @@ class TestSuite:
         for graph in graphs_list_of_tests:
             print(f"Running update tests for graph / graphs: {graph}")
             for test in graphs_list_of_tests[graph]:
+                print(f"Running: {test.name}")
                 if not self.prepare_test_environment(
                         graph, graphs_list_of_tests[graph]):
                     # If the environment is not prepared, skip all tests for this graph.
@@ -314,6 +315,7 @@ class TestSuite:
                 continue
 
             for test in graphs_list_of_tests[graph_path]:
+                print(f"Running: {test.name}")
                 content_type = "rq"
                 result_format = "srx"
                 if "Update" in test.type_name:
@@ -331,7 +333,7 @@ class TestSuite:
                     setattr(test, "query_log", query_result[1])
                     self.update_test_status(test, PASSED, "")
                 if test.type_name == "NegativeSyntaxTest11" or test.type_name == "NegativeUpdateSyntaxTest11":
-                    if test.error_type == "QUERY EXCEPTION":
+                    if test.error_type in QUERY_ERRORS:
                         status = PASSED
                         error_type = ""
                     else:
@@ -362,6 +364,7 @@ class TestSuite:
                 new_path: Tuple[str, str] = (path_to_graph, name_of_graph)
                 graph_paths = graph_paths + (new_path,)
             for test in graphs_list_of_tests[graph_path]:
+                print(f"Running: {test.name}")
                 if not self.prepare_test_environment(
                         graph_paths, graphs_list_of_tests[graph_path]):
                     break
@@ -401,6 +404,7 @@ class TestSuite:
                 break
             newpath = '/newpath-not-set'
             for test in graphs_list_of_tests[graph_path]:
+                print(f"Running: {test.name}")
                 if test.comment:
                     status, error_type, extracted_expected_responses, extracted_sent_requests, got_responses, new_newpath = run_protocol_test(
                         test, test.comment, newpath)
@@ -431,12 +435,16 @@ class TestSuite:
         """
         Main method to run all query tests.
         """
-        self.run_query_tests(self.tests["query"])
-        self.run_query_tests(self.tests["format"])
-        self.run_update_tests(self.tests["update"])
-        self.run_syntax_tests(self.tests["syntax"])
-        self.run_protocol_tests(self.tests["protocol"])
-        self.run_graphstore_protocol_tests(self.tests["graphstoreprotocol"])
+        try:
+            self.run_query_tests(self.tests["query"])
+            self.run_query_tests(self.tests["format"])
+            self.run_update_tests(self.tests["update"])
+            self.run_syntax_tests(self.tests["syntax"])
+            self.run_protocol_tests(self.tests["protocol"])
+            self.run_graphstore_protocol_tests(self.tests["graphstoreprotocol"])
+        except KeyboardInterrupt:
+            print("Interrupted by user.")
+            self.engine_manager.cleanup(self.config)
 
     def compress_json_bz2(self, input_data, output_filename):
         with bz2.open(output_filename, "wt") as zipfile:

@@ -171,9 +171,12 @@ def compare_response(expected_response: dict[str, str | list[str]], got_response
         result_match = True
     # Handle SELECT queries with the expected result true
     if expected_response.get('result', False) and is_select:
-        json_body = parse_chunked_response(got_response)
-        parsed = json.loads(json_body)
-        result_match = bool(parsed.get('results', {}).get('bindings'))
+        try:
+            json_body = parse_chunked_response(got_response)
+            parsed = json.loads(json_body)
+            result_match = bool(parsed.get('results', {}).get('bindings'))
+        except:
+            pass
     if 'text/turtle' in expected_response.get(
             'content_types') and status_code_match and content_type_match:
         response_ttl = parse_chunked_response(got_response)

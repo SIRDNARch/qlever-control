@@ -46,9 +46,9 @@ class QueryCommand(QleverQueryCommand):
             help="Do not print the (end-to-end) time taken",
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test = False ) -> bool:
         if not args.sparql_endpoint:
             args.sparql_endpoint = f"localhost:{args.port}/query"
         args.pin_to_cache = None
         args.access_token = None
-        super().execute(args)
+        super().execute(args, called_from_conformance_test)

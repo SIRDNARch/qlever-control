@@ -20,8 +20,6 @@ ENGINE_NAMES = {
     "sparql_conformance": "SPARQL Conformance",
 }
 # Default engine_name = script_name without starting 'q' and capitalized
-print(script_name)
-print(ENGINE_NAMES.get(script_name, script_name[1:].capitalize()))
 engine_name = ENGINE_NAMES.get(script_name, script_name[1:].capitalize())
 
 # Each module in `qlever/commands` corresponds to a command. The name

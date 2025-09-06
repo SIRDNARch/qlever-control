@@ -1,5 +1,7 @@
 import re
 import os
+import shutil
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse, unquote
 
@@ -82,3 +84,29 @@ def remove_date_time_parts(index_log: str) -> str:
     """
     pattern = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\s*-"
     return re.sub(pattern, "", index_log)
+
+def copy_graph_to_workdir(file_path: str, workdir: str) -> str:
+    """
+    Copy the file to the docker working directory and returns the new relative path.
+
+    Args:
+        file_path (str): Path to the source file.
+        workdir (str): Path to the working directory mounted in docker.
+
+    Returns:
+        str: Basename, usable inside the container.
+    """
+    src = Path(file_path).resolve()
+    dest = Path(workdir).resolve() / src.name
+    shutil.copy(src, dest)
+    return src.name
+
+def get_accept_header(result_format: str) -> str:
+    format_headers = {
+        "csv": "text/csv",
+        "tsv": "text/tab-separated-values",
+        "srx": "application/sparql-results+xml",
+        "ttl": "text/turtle",
+        "json": "application/sparql-results+json"
+    }
+    return format_headers.get(result_format, "application/sparql-results+json")

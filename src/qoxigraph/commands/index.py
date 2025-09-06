@@ -52,7 +52,7 @@ class IndexCommand(QleverCommand):
             use_bash=False,
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test = False) -> bool:
         index_cmd = f"load --location . --file {args.input_files}"
         index_cmd += f" |& tee {args.name}.index-log.txt"
 
@@ -98,10 +98,10 @@ class IndexCommand(QleverCommand):
             log.info("")
             log.info("Aborting the index operation...")
             return False
-
+        show_output = not called_from_conformance_test
         # Run the index command.
         try:
-            run_command(index_cmd, show_output=True, show_stderr=True)
+            run_command(index_cmd, show_output=show_output, show_stderr=show_output)
         except Exception as e:
             log.error(f"Building the index failed: {e}")
             return False

@@ -1,5 +1,6 @@
 import re
 import xml.etree.ElementTree as ET
+import xml.dom.minidom as md
 from sparql_conformance.models import FAILED, PASSED, INTENDED, RESULTS_NOT_THE_SAME, INTENDED_MSG
 from sparql_conformance.util import escape
 
@@ -373,6 +374,8 @@ def compare_xml(
     Returns:
         tuple (str,str,str,str,str,str): A tuple containing the status, error type and the strings XML1, XML2, XML1 RED, XML2 RED
     """
+    query_xml = md.parseString(query_xml).toxml()
+    query_xml = md.parseString(query_xml).toprettyxml(indent="  ")
     map_bnodes = {}
     status = FAILED
     error_type = RESULTS_NOT_THE_SAME

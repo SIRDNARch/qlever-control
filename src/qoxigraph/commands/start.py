@@ -68,7 +68,7 @@ class StartCommand(QleverCommand):
             use_bash=False,
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test = False) -> bool:
         bind = (
             f"{args.host_name}:{args.port}"
             if args.system == "native"
@@ -150,7 +150,8 @@ class StartCommand(QleverCommand):
         else:
             time.sleep(2)
             log_cmd = f"exec {args.system} logs -f {args.server_container}"
-        log_proc = subprocess.Popen(log_cmd, shell=True)
+        if not called_from_conformance_test:
+            log_proc = subprocess.Popen(log_cmd, shell=True)
         while not is_server_alive(endpoint_url):
             time.sleep(1)
 
@@ -161,7 +162,7 @@ class StartCommand(QleverCommand):
         )
 
         # Kill the log process
-        if not args.run_in_foreground:
+        if not args.run_in_foreground and not called_from_conformance_test:
             log_proc.terminate()
 
         # With `--run-in-foreground`, wait until the server is stopped.

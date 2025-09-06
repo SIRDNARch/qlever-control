@@ -69,7 +69,7 @@ class StartCommand(QleverCommand):
             ports=[(args.port, args.port)],
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test = False) -> bool:
         start_cmd = f"{args.server_binary} --port {args.port} index"
 
         if args.system == "native":
@@ -142,7 +142,8 @@ class StartCommand(QleverCommand):
             )
         log.info("")
         log_cmd = f"exec tail -f {args.name}.server-log.txt"
-        log_proc = subprocess.Popen(log_cmd, shell=True)
+        if not called_from_conformance_test:
+            log_proc = subprocess.Popen(log_cmd, shell=True)
         while not is_server_alive(endpoint_url):
             time.sleep(1)
 
@@ -151,7 +152,7 @@ class StartCommand(QleverCommand):
         )
 
         # Kill the log process
-        if not args.run_in_foreground:
+        if not args.run_in_foreground and not called_from_conformance_test:
             log_proc.terminate()
 
         # With `--run-in-foreground`, wait until the server is stopped.
