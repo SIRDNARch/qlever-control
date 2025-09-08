@@ -3,6 +3,8 @@ from typing import Tuple
 
 import requests
 import subprocess
+
+from sparql_conformance import util
 from sparql_conformance.engines.manager import EngineManager
 from sparql_conformance.models import Config
 from sparql_conformance.rdf_tools import write_ttl_file, delete_ttl_file, rdf_xml_to_turtle
@@ -10,6 +12,22 @@ from sparql_conformance.rdf_tools import write_ttl_file, delete_ttl_file, rdf_xm
 
 class QLeverBinaryManager(EngineManager):
     """Manager for QLever using binary execution"""
+
+    @staticmethod
+    def _query(headers: dict[str, str], query: str, url: str) -> tuple[int, str]:
+        try:
+            response = requests.post(url, headers=headers, data=query.encode("utf-8"))
+            return response.status_code, response.content.decode("utf-8")
+        except requests.exceptions.RequestException as e:
+            return 500, f"Query execution error: {str(e)}"
+
+    def protocol_endpoint(self) -> str:
+        return "sparql"
+
+    def update(self, config: Config, query: str) -> Tuple[int, str]:
+        url = f"{config.server_address}:{config.port}?access-token=abc"
+        headers = {"Content-type": "application/sparql-update; charset=utf-8"}
+        return self._query(headers, query, url)
 
     def cleanup(self, config: Config):
         self._stop_server(config.command_stop_server)
@@ -30,17 +48,12 @@ class QLeverBinaryManager(EngineManager):
 
         return index_success, server_success, index_log, server_log
 
-    def query(self, config: Config, query: str, query_type: str, result_format: str) -> Tuple[int, str]:
+    def query(self, config: Config, query: str, result_format: str) -> Tuple[int, str]:
         accept = util.get_accept_header(result_format)
-        content_type = "application/sparql-query; charset=utf-8" if query_type == "rq" else "application/sparql-update; charset=utf-8"
-
-        url = f"{config.server_address}:{config.port}?access-token=abc"
+        content_type = "application/sparql-query; charset=utf-8"
+        url = f"{config.server_address}:{config.port}"
         headers = {"Accept": accept, "Content-type": content_type}
-        try:
-            response = requests.post(url, headers=headers, data=query.encode("utf-8"))
-            return response.status_code, response.content.decode("utf-8")
-        except requests.exceptions.RequestException as e:
-            return 500, f"Query execution error: {str(e)}"
+        return self._query(headers, query, url)
 
     def _index(self, command_index: str, graph_paths: Tuple[Tuple[str, str], ...]) -> Tuple[bool, str]:
         remove_paths = []

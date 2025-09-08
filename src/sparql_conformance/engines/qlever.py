@@ -22,12 +22,21 @@ from sparql_conformance.rdf_tools import write_ttl_file, delete_ttl_file, rdf_xm
 class QLeverManager(EngineManager):
     """Manager for QLever using docker execution"""
 
+    def update(self, config: Config, query: str) -> Tuple[int, str]:
+        return self._query(config, query, "ru", "json")
+
+    def protocol_endpoint(self) -> str:
+        return "sparql"
+
     def cleanup(self, config: Config):
         self._stop_server(config.port)
         with mute_log():
             run_command('rm -f sparql-conformance-index*')
 
-    def query(self, config: Config, query: str, query_type: str, result_format: str) -> Tuple[int, str]:
+    def query(self, config: Config, query: str, result_format: str) -> Tuple[int, str]:
+        return self._query(config, query, "rq", result_format)
+
+    def _query(self, config: Config, query: str, query_type: str, result_format: str) -> Tuple[int, str]:
         content_type = "query=" if query_type == "rq" else "update="
         args = Namespace(
             query=query,

@@ -19,8 +19,18 @@ from sparql_conformance.rdf_tools import write_ttl_file, rdf_xml_to_turtle, dele
 
 class MDBManager(EngineManager):
     """Manager for MillenniumDB using docker execution"""
+
     def __init__(self):
         self.first_setup: bool = True
+
+    def query(self, config: Config, query: str, result_format: str) -> Tuple[int, str]:
+        return self._query(config, query, "rq", result_format)
+
+    def update(self, config: Config, query: str) -> Tuple[int, str]:
+        return self._query(config, query, "ru", "json")
+
+    def protocol_endpoint(self) -> str:
+        return "sparql"
 
     def cleanup(self, config: Config):
         """
@@ -48,7 +58,7 @@ class MDBManager(EngineManager):
             except Exception:
                 pass
 
-    def query(self, config: Config, query: str, query_type: str, result_format: str) -> Tuple[int, str]:
+    def _query(self, config: Config, query: str, query_type: str, result_format: str) -> Tuple[int, str]:
         content_type = "query=" if query_type == "rq" else "update="
         args = Namespace(
             query=query,

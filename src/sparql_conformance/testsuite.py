@@ -231,7 +231,6 @@ class TestSuite:
                 query_result = self.engine_manager.query(
                     self.config,
                     test.query_file,
-                    "rq",
                     test.result_format)
                 if query_result[0] == 200:
                     self.evaluate_query(
@@ -260,11 +259,7 @@ class TestSuite:
                     # If the environment is not prepared, skip all tests for this graph.
                     break
                 # Execute the update query.
-                query_update_result = self.engine_manager.query(
-                    self.config,
-                    test.query_file,
-                    "ru",
-                    test.result_format)
+                query_update_result = self.engine_manager.update(self.config, test.query_file)
                 
                 # If the update query was successful, retrieve the current state of all graphs
                 # and check if the results match the expected results.
@@ -275,7 +270,6 @@ class TestSuite:
                     construct_graph = self.engine_manager.query(
                         self.config,
                         "CONSTRUCT {?s ?p ?o} WHERE { GRAPH ql:default-graph {?s ?p ?o}}",
-                        "rq",
                         "ttl")
                     actual_state_of_graphs.append(construct_graph[1])
                     expected_state_of_graphs.append(test.result_file)
@@ -286,7 +280,6 @@ class TestSuite:
                             construct_graph = self.engine_manager.query(
                                 self.config,
                                 f"CONSTRUCT {{?s ?p ?o}} WHERE {{ GRAPH <{graph_label}> {{?s ?p ?o}}}}",
-                                "rq",
                                 "ttl")
                             actual_state_of_graphs.append(construct_graph[1])
                             expected_state_of_graphs.append(expected_graph)
@@ -316,17 +309,19 @@ class TestSuite:
 
             for test in graphs_list_of_tests[graph_path]:
                 print(f"Running: {test.name}")
-                content_type = "rq"
                 result_format = "srx"
-                if "Update" in test.type_name:
-                    content_type = "ru"
                 if "construct" in test.name:
                     result_format = "ttl"
-                query_result = self.engine_manager.query(
-                    self.config,
-                    test.query_file,
-                    content_type,
-                    result_format)
+                if "Update" in test.type_name:
+                    query_result = self.engine_manager.update(
+                        self.config,
+                        test.query_file)
+                else:
+                    query_result = self.engine_manager.query(
+                        self.config,
+                        test.query_file,
+                        result_format)
+
                 if query_result[0] != 200:
                     self.process_failed_response(test, query_result)
                 else:
