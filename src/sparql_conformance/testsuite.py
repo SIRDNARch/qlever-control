@@ -1,19 +1,18 @@
+import bz2
+import json
+import os
 from typing import List, Dict, Tuple
 
-import os
-import json
-import bz2
-
+import sparql_conformance.util as util
 from sparql_conformance.config import Config
 from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.engines.qlever_binary import QLeverBinaryManager
-from sparql_conformance.test_object import TestObject, Status, ErrorMessage
-from sparql_conformance.xml_tools import compare_xml
-from sparql_conformance.tsv_csv_tools import compare_sv
 from sparql_conformance.json_tools import compare_json
-from sparql_conformance.rdf_tools import compare_ttl
 from sparql_conformance.protocol_tools import run_protocol_test
-import sparql_conformance.util as util
+from sparql_conformance.rdf_tools import compare_ttl
+from sparql_conformance.test_object import TestObject, Status, ErrorMessage
+from sparql_conformance.tsv_csv_tools import compare_sv
+from sparql_conformance.xml_tools import compare_xml
 
 
 class TestSuite:

@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from qlever.log import log
 from qlever.command import QleverCommand
+from qlever.log import log
 from qlever.util import run_command
 
 
@@ -20,19 +20,7 @@ class VisualizeCommand(QleverCommand):
         return {"runtime": ["system"]}
 
     def additional_arguments(self, subparser):
-        subparser.add_argument(
-            '--port',
-            required=False,
-            help='Port of the webserver (default: 3000)',
-            default='3000'
-        )
-        subparser.add_argument(
-            '--results',
-            required=False,
-            help='Directory containing the results of the SPARQL conformance tests (default: current directory)',
-            default='$(pwd)'
-        )
-
+        pass
 
     def execute(self, args) -> bool:
         dockerfile_dir = Path(__file__).parent.parent

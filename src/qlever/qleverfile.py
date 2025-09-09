@@ -63,13 +63,6 @@ class Qleverfile:
                   "http://www.w3.org/2001/XMLSchema#double)]'"
             ),
         )
-        args["system"] = arg(
-            "--system",
-            type=str,
-            choices=Containerize.supported_systems(),
-            default="docker",
-            help="Which system to use to run the tests in"
-        )
         args["engine"] = arg(
             "--engine",
             type=str,
@@ -99,22 +92,9 @@ class Qleverfile:
         server_args = all_args["server"] = {}
         runtime_args = all_args["runtime"] = {}
         ui_args = all_args["ui"] = {}
-        all_args["conformance"] = (
-            Qleverfile.get_conformance_arguments(arg)
-        )
+        all_args["conformance"] = Qleverfile.get_conformance_arguments(arg)
         qlever_binaries_args = all_args["qlever_binaries"] = {}
-        qlever_binaries_args["image"] = arg(
-            "--image",
-            type=str,
-            default="docker.io/adfreiburg/qlever",
-            help="The name of the image when running in a container",
-        )
-        qlever_binaries_args["binaries_directory"] = arg(
-            "--binaries-directory",
-            type=str,
-            required=True,
-            help="Path to the directory of the IndexBuilderMain and ServerMain binaries.",
-        )
+        conformance_ui_args = all_args["conformance_ui"] = {}
 
         data_args["name"] = arg(
             "--name", type=str, required=True, help="The name of the dataset"
@@ -429,6 +409,32 @@ class Qleverfile:
             "--ui-container",
             type=str,
             help="The name of the container used for `qlever ui`",
+        )
+
+        qlever_binaries_args["image"] = arg(
+            "--image",
+            type=str,
+            default="docker.io/adfreiburg/qlever",
+            help="The name of the image when running in a container",
+        )
+        qlever_binaries_args["binaries_directory"] = arg(
+            "--binaries-directory",
+            type=str,
+            required=True,
+            help="Path to the directory of the IndexBuilderMain and ServerMain binaries.",
+        )
+
+        conformance_ui_args["port"] = arg(
+            '--port',
+            required=False,
+            help='Port of the webserver (default: 3000)',
+            default='3000'
+        )
+        conformance_ui_args["result_directory"] = arg(
+            '--result-directory',
+            required=False,
+            help='Directory containing the results of the SPARQL conformance tests (default: current directory)',
+            default='$(pwd)'
         )
 
         return all_args

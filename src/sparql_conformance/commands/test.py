@@ -1,7 +1,7 @@
 from qlever.command import QleverCommand
-from sparql_conformance.testsuite import TestSuite
-from sparql_conformance.config_manager import initialize_config
+from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.extract_tests import extract_tests
+from sparql_conformance.testsuite import TestSuite
 
 class TestCommand(QleverCommand):
     """
@@ -40,7 +40,8 @@ class TestCommand(QleverCommand):
     def relevant_qleverfile_arguments(self) -> dict[str: list[str]]:
         return {
             "conformance": ["name", "port", "engine", "graph_store",
-                                "testsuite_dir", "type_alias", "system"],
+                            "testsuite_dir", "type_alias"],
+            "runtime": ["system"]
         }
 
     def additional_arguments(self, subparser):
