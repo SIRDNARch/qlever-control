@@ -437,7 +437,7 @@ def compare_xml(
             list(results2)) == 0 and len(
                 list(head1)) == 0 and len(
                     list(head2)) == 0) or (
-                        results1 is None and results2 is None and head1 is None and head2 is None and bool1 is None and bool2 is None):
+                        results1 is None and results2 is None and head1 is None and head2 is None and expected_bool is None and query_bool is None):
         status = Status.PASSED
         error_type = ""
     else:
