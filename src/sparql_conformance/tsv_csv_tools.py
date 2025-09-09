@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 from sparql_conformance.util import escape, is_number
 from io import StringIO
 import csv
@@ -73,7 +75,7 @@ def compare_values(
         value1: str,
         value2: str,
         use_config: bool,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         map_bnodes: dict) -> bool:
     """
     Compares two values for equality accounting for numeric differences and aliases.
@@ -109,7 +111,7 @@ def compare_values(
         if float(value1) == float(value2):
             return True
     else:  # Handle exceptions integer = int
-        if value1 in alias and alias[value1] == value2 and use_config:
+        if use_config and ((value1, value2) in alias or (value2, value1) in alias):
             return True
     return False
 
@@ -118,7 +120,7 @@ def compare_rows(
         row1: list,
         row2: list,
         use_config: bool,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         map_bnodes: dict) -> bool:
     """
     Compares two rows for equality.
@@ -127,7 +129,7 @@ def compare_rows(
         row1 (list): The first row to compare.
         row2 (list): The second row to compare.
         use_config (bool): Flag to use configuration for additional comparison logic.
-        alias (dict): Dictionary with aliases for datatypes ex. int = integer .
+        alias (List[Tuple[str, str]]): Dictionary with aliases for datatypes ex. int = integer .
         map_bnodes (dict): Dictionary mapping the used bnodes.
 
     Returns:
@@ -153,7 +155,7 @@ def compare_array(
         result_copy: list,
         expected_result_copy: list,
         use_config: bool,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         map_bnodes: dict):
     """
     Compares two arrays and removes equal rows from both arrays.
@@ -164,7 +166,7 @@ def compare_array(
         result_copy (list): A copy of the actual result array for modification.
         expected_result_copy (list): A copy of the expected result array for modification.
         use_config (bool): Flag to use configuration for additional comparison logic.
-        alias (dict): Dictionary with aliases for datatypes ex. int = integer .
+        alias (List[Tuple[str, str]]): Dictionary with aliases for datatypes ex. int = integer .
         map_bnodes (dict): Dictionary mapping the used bnodes.
     """
     for row1 in result:
@@ -207,7 +209,7 @@ def compare_sv(
         expected_string: str,
         query_result: str,
         result_format: str,
-        alias: dict):
+        alias: List[Tuple[str, str]]):
     """
     Compares CSV/TSV formatted query result with the expected output.
 
@@ -215,7 +217,7 @@ def compare_sv(
         expected_string (str): Expected CSV/TSV formatted string.
         query_result (str): Actual CSV/TSV formatted string from the query.
         output_format (str): Format of the output ('csv' or 'tsv').
-        alias (dict): Dictionary with aliases for datatypes ex. int = integer .
+        alias (List[Tuple[str, str]]): Dictionary with aliases for datatypes ex. int = integer .
 
     Returns:
         tuple(int, str, str, str, str, str): A tuple of test status and error message and expected html, query html, expected red, query red

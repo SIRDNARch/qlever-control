@@ -1,6 +1,8 @@
 import re
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as md
+from typing import List, Tuple
+
 from sparql_conformance.test_object import Status, ErrorMessage
 from sparql_conformance.util import escape
 
@@ -177,7 +179,7 @@ def xml_elements_equal(
         element1: ET.Element,
         element2: ET.Element,
         compare_with_intended_behaviour: bool,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         number_types: list,
         map_bnodes: dict) -> bool:
     """
@@ -199,8 +201,7 @@ def xml_elements_equal(
 
     is_number = False
     if element1.tag != element2.tag:
-        if (alias.get(element1.tag) != element2.tag and alias.get(
-                element2.tag) != element1.tag) or not compare_with_intended_behaviour:
+        if not compare_with_intended_behaviour or not (element1.tag, element2.tag) in alias and not (element2.tag, element1.tag) in alias:
             return False
 
     if element1.attrib != element2.attrib:
@@ -212,12 +213,9 @@ def xml_elements_equal(
             return False
         if ((element1.attrib.get("datatype") is not None or element2.attrib.get("datatype") != "http://www.w3.org/2001/XMLSchema#string") and
             (element2.attrib.get("datatype") is not None or element1.attrib.get("datatype") != "http://www.w3.org/2001/XMLSchema#string")):
-            if not isinstance(
-                element1.attrib, dict) and (
-                alias.get(
-                    element1.attrib) != element2.attrib and alias.get(
-                    element2.attrib) != element1.attrib) or not compare_with_intended_behaviour:
-                return False
+            if not isinstance(element1.attrib, dict):
+                if not compare_with_intended_behaviour or not (element1.attrib, element2.attrib) in alias and not (element2.attrib, element1.attrib) in alias:
+                    return False
             if isinstance(element1.attrib, dict):
                 if element1.attrib.get("datatype") is None and element2.attrib.get(
                         "datatype") is None:
@@ -229,8 +227,9 @@ def xml_elements_equal(
                     else:
                         return False
                 else:
-                    if (alias.get(element1.attrib.get("datatype")) != element2.attrib.get("datatype") and alias.get(
-                            element2.attrib.get("datatype")) != element1.attrib.get("datatype")) or not compare_with_intended_behaviour:
+                    if not compare_with_intended_behaviour or not (element1.attrib.get("datatype"),
+                                                                   element2.attrib.get("datatype")) in alias and not (element2.attrib.get("datatype"),
+                                                                                                      element1.attrib.get("datatype")) in alias:
                         return False
 
     if (element1.attrib.get("datatype") in number_types) != (
@@ -323,7 +322,7 @@ def xml_remove_equal_elements(
         parent1: ET.Element,
         parent2: ET.Element,
         use_config: bool,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         number_types: list,
         map_bnodes: dict):
     """
@@ -357,7 +356,7 @@ def xml_remove_equal_elements(
 def compare_xml(
         expected_xml: str,
         query_xml: str,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         number_types: list) -> tuple:
     """
     Compares two XML documents, identifies differences and generates HTML representations.

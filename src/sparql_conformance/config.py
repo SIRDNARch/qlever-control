@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, List
 
 
 class Config:
@@ -8,7 +8,7 @@ class Config:
     def __init__(self,
                  port: str,
                  graph_store: str,
-                 type_alias: str,
+                 type_alias: List[Tuple[str, str]],
                  testsuite_dir: str,
                  binaries_directory: str,
                  exclude: str,

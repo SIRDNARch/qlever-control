@@ -1,4 +1,6 @@
 import json
+from typing import List, Tuple
+
 from sparql_conformance.test_object import Status, ErrorMessage
 
 
@@ -194,7 +196,7 @@ def json_elements_equal(
         element1: dict,
         element2: dict,
         compare_with_intended_behaviour: bool,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         number_types: list,
         map_bnodes: dict) -> bool:
     """
@@ -244,8 +246,7 @@ def json_elements_equal(
                                 field1.get(sub_key)) == float(
                                 field2.get(sub_key)):
                             continue
-                    if ((str(alias.get(str(field1.get(sub_key)))) == str(field2.get(sub_key))) or (str(alias.get(
-                            str(field2.get(sub_key)))) == str(field1.get(sub_key)))) and compare_with_intended_behaviour:
+                    if compare_with_intended_behaviour and ((str(field1.get(sub_key)), str(field2.get(sub_key))) in alias or (str(field2.get(sub_key)), str(field1.get(sub_key))) in alias):
                         continue
                     return False
         else:
@@ -258,7 +259,7 @@ def remove_once_found(
         list1: list,
         list2: list,
         compare_with_intended_behaviour: bool,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         number_types: list,
         map_bnodes: dict) -> list:
     """
@@ -268,7 +269,7 @@ def remove_once_found(
         list1 (list): The first list to compare.
         list2 (list): The second list to compare.
         compare_with_intended_behaviour (bool): Bool to determine whether to use intended behavior aliases in comparison.
-        alias (dict): Dictionary with aliases for datatypes ex. int = integer .
+        alias (List[Tuple[str, str]]): Dictionary with aliases for datatypes ex. int = integer .
         number_types (list): List containing all datatypes that should be used as numbers.
         map_bnodes (dict): Dictionary mapping the used bnodes.
 
@@ -297,7 +298,7 @@ def remove_once_found(
 def compare_json(
         expected_json: str,
         query_json: str,
-        alias: dict,
+        alias: List[Tuple[str, str]],
         number_types: list) -> tuple:
     """
     Compares two JSON objects and identifies differences in their "head" and "results" sections.
@@ -309,7 +310,7 @@ def compare_json(
     Parameters:
         expected_json (str): The expected JSON content as a string.
         query_json (str): The query JSON content as a string.
-        alias (dict): Dictionary with aliases for datatypes ex. int = integer .
+        alias (List[Tuple[str, str]]): Dictionary with aliases for datatypes ex. int = integer .
         number_types (list): List containing all datatypes that should be used as numbers.
         map_bnodes (dict): Dictionary mapping the used bnodes.
 
