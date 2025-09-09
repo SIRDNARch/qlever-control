@@ -10,7 +10,7 @@ from qlever.util import run_command
 from qlever.commands.start import StartCommand
 from qlever.commands.stop import StopCommand
 from sparql_conformance.config import Config
-from sparql_conformance.engines.manager import EngineManager
+from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance import util
 from qlever.commands.index import IndexCommand
 from sparql_conformance.rdf_tools import write_ttl_file, delete_ttl_file, rdf_xml_to_turtle

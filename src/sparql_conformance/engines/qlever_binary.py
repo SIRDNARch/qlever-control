@@ -6,7 +6,7 @@ import requests
 import subprocess
 
 from sparql_conformance import util
-from sparql_conformance.engines.manager import EngineManager
+from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.test_object import Config
 from sparql_conformance.rdf_tools import write_ttl_file, delete_ttl_file, rdf_xml_to_turtle
 

@@ -3,7 +3,7 @@ import re
 import json
 from typing import Tuple
 
-from sparql_conformance.engines.manager import EngineManager
+from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.test_object import TestObject, Status, ErrorMessage
 from sparql_conformance.rdf_tools import compare_ttl
 

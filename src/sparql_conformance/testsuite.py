@@ -1,19 +1,18 @@
 from typing import List, Dict, Tuple
 
 import os
-import sys
 import json
 import bz2
 
-from sparql_conformance.engines.manager import EngineManager
+from sparql_conformance.config import Config
+from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.engines.qlever_binary import QLeverBinaryManager
 from sparql_conformance.test_object import TestObject, Status, ErrorMessage
-from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.xml_tools import compare_xml
 from sparql_conformance.tsv_csv_tools import compare_sv
 from sparql_conformance.json_tools import compare_json
 from sparql_conformance.rdf_tools import compare_ttl
-from sparql_conformance.protocol_tools import run_protocol_test, compare_response
+from sparql_conformance.protocol_tools import run_protocol_test
 import sparql_conformance.util as util
 
 
@@ -87,12 +86,12 @@ class TestSuite:
             expected_graphs ([str]]): The expected state of each graph.
             graphs ([str]): The actual state of our graphs.
         """
-        status = [Status.FAILED for i in range(len(expected_graphs))]
-        error_type = [ErrorMessage.RESULTS_NOT_THE_SAME for i in range(len(expected_graphs))]
-        expected_html = ["" for i in range(len(expected_graphs))]
-        test_html = ["" for i in range(len(expected_graphs))]
-        expected_red = ["" for i in range(len(expected_graphs))]
-        test_red = ["" for i in range(len(expected_graphs))]
+        status = [Status.FAILED for _ in range(len(expected_graphs))]
+        error_type = [ErrorMessage.RESULTS_NOT_THE_SAME for _ in range(len(expected_graphs))]
+        expected_html = ["" for _ in range(len(expected_graphs))]
+        test_html = ["" for _ in range(len(expected_graphs))]
+        expected_red = ["" for _ in range(len(expected_graphs))]
+        test_red = ["" for _ in range(len(expected_graphs))]
         assert(len(expected_graphs) == len(graphs))
         for i in range(len(expected_graphs)):
             status[i], error_type[i], expected_html[i], test_html[i], expected_red[i], test_red[i] = compare_ttl(

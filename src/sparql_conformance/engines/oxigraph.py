@@ -11,7 +11,7 @@ from qoxigraph.commands.start import StartCommand
 from qoxigraph.commands.stop import StopCommand
 from sparql_conformance import util
 from sparql_conformance.config import Config
-from sparql_conformance.engines.manager import EngineManager
+from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.rdf_tools import write_ttl_file, rdf_xml_to_turtle, delete_ttl_file
 
 
