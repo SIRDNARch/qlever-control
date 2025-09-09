@@ -1,5 +1,10 @@
 from qlever.command import QleverCommand
+from sparql_conformance.config import Config
 from sparql_conformance.engines.engine_manager import EngineManager
+from sparql_conformance.engines.qlever_binary import QLeverBinaryManager
+from sparql_conformance.engines.qlever import QLeverManager
+from sparql_conformance.engines.mdb import MDBManager
+from sparql_conformance.engines.oxigraph import OxigraphManager
 from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.testsuite import TestSuite
 
@@ -13,6 +18,13 @@ class TestCommand(QleverCommand):
             'qlever',
             'qlever-binaries',
             'mdb',
+            'oxigraph'
+        ]
+        self.options_with_binaries = [
+            'qlever-binaries'
+        ]
+        self.options_with_images = [
+            'qlever',
             'oxigraph'
         ]
 
@@ -40,36 +52,32 @@ class TestCommand(QleverCommand):
     def relevant_qleverfile_arguments(self) -> dict[str: list[str]]:
         return {
             "conformance": ["name", "port", "engine", "graph_store",
-                            "testsuite_dir", "type_alias"],
-            "runtime": ["system"]
+                            "testsuite_dir", "type_alias", "exclude"],
+            "runtime": ["system"],
+            "qlever_binaries": ["binaries_directory"],
+            "qlever": ["qlever_image"],
+            "oxigraph": ["oxigraph_image"]
         }
 
     def additional_arguments(self, subparser):
         pass
 
     def execute(self, args) -> bool:
-#         test = (('/Users/ricoandris/Desktop/master-project/conformance/rdf-tests/sparql/sparql11/csv-tsv-res/data.ttl', '-'),
-#                 ('/Users/ricoandris/Desktop/master-project/conformance/rdf-tests/sparql/sparql11/csv-tsv-res/data2.ttl','data2'))
-#         query = '''PREFIX : <http://example.org/>
-#
-# SELECT * WHERE { ?s ?p ?o} ORDER BY ?s ?p ?o'''
-#         config = initialize_config()
-#         m = QMDBManager()
-#         m.setup(config, test)
-#         m.query(config,query,'rq','csv')
-#         m.cleanup(config)
         for arg in args.__dict__:
             print(arg)
-        print(args.name)
-        print(args.engine)
-        print(args.type_alias)
-        return True
-        config = initialize_config()
-        if config is None:
+        if args.engine not in self.options:
             return False
+        if args.engine in self.options_with_binaries and args.binaries_directory is "":
+            return False
+        image = getattr(args, f"{args.engine}_image", None)
+        if args.engine in self.options_with_images and (image is None or args.system is "native"):
+            return False
+        alias = [tuple(x) for x in args.type_alias] if args.type_alias else []
+        config = Config(image, args.system, args.port, args.graph_store, args.testsuite_dir, alias,
+                        args.binaries_directory, args.exclude)
         tests, test_count = extract_tests(config)
         test_suite = TestSuite(name=args.name, tests=tests, test_count=test_count, config=config,
-                               engine_type=args.engine)
+                               engine_manager=self.get_engine_manager(args.engine))
         test_suite.run()
         test_suite.generate_json_file()
         return True

@@ -189,7 +189,7 @@ def xml_elements_equal(
         e1 (ET.Element): The first XML element
         element2 (ET.Element): The second XML element
         compare_with_intended_behaviour (bool): Bool to determine whether to use intended behaviour aliases in comparison.
-        alias (dict): Dictionary with aliases for datatypes ex. int = integer .
+        alias (List[Tuple[str, str]]): Dictionary with aliases for datatypes ex. int = integer .
         number_types (list): List containing all datatypes that should be used as numbers.
         map_bnodes (dict): Dictionary mapping the used bnodes.
 
@@ -305,10 +305,8 @@ def xml_elements_equal(
                     alias,
                     number_types,
                     map_bnodes) for c2 in element2) for c1 in element1)
-        if (alias.get(element1.text) != element2.text and alias.get(
-                element2.text) != element1.text) or not compare_with_intended_behaviour:
+        if not compare_with_intended_behaviour or not (element1.text, element2.text) in alias and not (element2.text, element1.text) in alias:
             return False
-
     return all(any(xml_elements_equal(
             c1,
             c2,

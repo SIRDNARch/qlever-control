@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-from sparql_conformance.test_object import Config
+from sparql_conformance.config import Config
 
 
 class EngineManager(ABC):

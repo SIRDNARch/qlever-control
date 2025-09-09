@@ -57,10 +57,10 @@ class Qleverfile:
             type=json.loads,
             required=False,
             help=("Type mismatches that will be considered intended."
-                  "ex. '[(http://www.w3.org/2001/XMLSchema#integer, "
-                  "http://www.w3.org/2001/XMLSchema#int..."
-                  "(http://www.w3.org/2001/XMLSchema#float,"
-                  "http://www.w3.org/2001/XMLSchema#double)]'"
+                  "ex. \"[['http://www.w3.org/2001/XMLSchema#integer', "
+                  "'http://www.w3.org/2001/XMLSchema#int']..."
+                  "['http://www.w3.org/2001/XMLSchema#float',"
+                  "'http://www.w3.org/2001/XMLSchema#double']]\""
             ),
         )
         args["engine"] = arg(
@@ -69,6 +69,14 @@ class Qleverfile:
             choices=["qlever", "mdb", "oxigraph", "qlever-binaries"],
             default="docker",
             help="Which system to use to run the tests in"
+        )
+        args["exclude"] = arg(
+            "--exclude",
+            type=lambda s: s.split(","),
+            default=[],
+            help=("Tests (names) or test groups to exclude from the run."
+                  "ex. service,entailment,POST - existing graph"
+            )
         )
         return args
 
@@ -94,6 +102,8 @@ class Qleverfile:
         ui_args = all_args["ui"] = {}
         all_args["conformance"] = Qleverfile.get_conformance_arguments(arg)
         qlever_binaries_args = all_args["qlever_binaries"] = {}
+        qlever_args = all_args["qlever"] = {}
+        oxigraph_args = all_args["oxigraph"] = {}
         conformance_ui_args = all_args["conformance_ui"] = {}
 
         data_args["name"] = arg(
@@ -411,17 +421,26 @@ class Qleverfile:
             help="The name of the container used for `qlever ui`",
         )
 
-        qlever_binaries_args["image"] = arg(
-            "--image",
+        qlever_binaries_args["binaries_directory"] = arg(
+            "--binaries-directory",
+            type=str,
+            required=False,
+            help="Path to the directory of the IndexBuilderMain and ServerMain binaries.",
+            default=""
+        )
+
+        qlever_args["qlever_image"] = arg(
+            "--qlever-image",
             type=str,
             default="docker.io/adfreiburg/qlever",
             help="The name of the image when running in a container",
         )
-        qlever_binaries_args["binaries_directory"] = arg(
-            "--binaries-directory",
+
+        oxigraph_args["oxigraph_image"] = arg(
+            "--oxigraph-image",
             type=str,
-            required=True,
-            help="Path to the directory of the IndexBuilderMain and ServerMain binaries.",
+            default="ghcr.io/oxigraph/oxigraph",
+            help="The name of the image when running in a container",
         )
 
         conformance_ui_args["port"] = arg(

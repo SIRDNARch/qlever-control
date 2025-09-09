@@ -17,7 +17,9 @@ class VisualizeCommand(QleverCommand):
         return False
 
     def relevant_qleverfile_arguments(self) -> dict[str: list[str]]:
-        return {"runtime": ["system"]}
+        return {"runtime": ["system"],
+                "conformance_ui": ["result_directory", "port"]
+                }
 
     def additional_arguments(self, subparser):
         pass
@@ -32,7 +34,7 @@ class VisualizeCommand(QleverCommand):
                             --build-arg {uid} --build-arg {gid} {dockerfile_dir}"
         start_server_cmd = f"docker run -it --rm \
                             -p {args.port}:3000 \
-                            -v {args.results}:/app/public/results \
+                            -v {args.result_directory}:/app/public/results \
                             visualize-results"
         image_id = run_command(
             f"{system} images -q visualize-results", return_output=True
