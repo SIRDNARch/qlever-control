@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Tuple
 
@@ -6,7 +7,7 @@ import subprocess
 
 from sparql_conformance import util
 from sparql_conformance.engines.manager import EngineManager
-from sparql_conformance.models import Config
+from sparql_conformance.test_object import Config
 from sparql_conformance.rdf_tools import write_ttl_file, delete_ttl_file, rdf_xml_to_turtle
 
 
@@ -30,17 +31,24 @@ class QLeverBinaryManager(EngineManager):
         return self._query(headers, query, url)
 
     def cleanup(self, config: Config):
-        self._stop_server(config.command_stop_server)
-        self._remove_index(config.command_remove_index)
+        path_to_server_main = os.path.join(config.path_to_binaries, "ServerMain")
+        command_stop_server = f"pkill -f '{path_to_server_main} -i [^ ]*TestSuite'"
+        command_remove_index = "rm -f TestSuite.index.* TestSuite.vocabulary.* TestSuite.prefixes TestSuite.meta-data.json TestSuite.index-log.txt"
+        self._stop_server(command_stop_server)
+        self._remove_index(command_remove_index)
 
     def setup(self, config: Config, graph_paths: Tuple[Tuple[str, str], ...]) -> Tuple[bool, bool, str, str]:
+        path_to_server_main = os.path.join(config.path_to_binaries, "ServerMain")
+        path_to_index_builder = os.path.join(config.path_to_binaries, "IndexBuilderMain")
+        command_index = f"{path_to_index_builder} -s TestSuite.settings.json -i TestSuite -p false"
+        command_start_server = f"{path_to_server_main} -i TestSuite -j 8 -p {config.port} > TestSuite.server-log.txt -a abc"
         server_success = False
-        index_success, index_log = self._index(config.command_index, graph_paths)
+        index_success, index_log = self._index(command_index, graph_paths)
         if not index_success:
             return index_success, server_success, index_log, ''
         else:
             server_success, server_log = self._start_server(
-                config.command_start_server,
+                command_start_server,
                 config.server_address,
                 config.port)
             if not server_success:

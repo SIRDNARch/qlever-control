@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import socket
 import subprocess
@@ -22,6 +23,63 @@ class Qleverfile:
     """
 
     @staticmethod
+    def get_conformance_arguments(arg):
+        """
+        Define all possible parameters for conformance checks.
+        """
+        args = {}
+        args["name"] = arg(
+            "--name",
+            type=str,
+            required=True,
+            help="Name of the result file of the conformance check.",
+        )
+        args["port"] = arg(
+            "--port",
+            type=str,
+            required=True,
+            help="Port which will be used for the SPARQL sever.",
+        )
+        args["graph_store"] = arg(
+            "--graph-store",
+            type=str,
+            required=True,
+            help="Name of the graph store endpoint used for graph store protocol tests.",
+        )
+        args["testsuite_dir"] = arg(
+            "--testsuite-dir",
+            type=str,
+            required=True,
+            help="Path to the directory of the testsuite.",
+        )
+        args["type_alias"] = arg(
+            "--type-alias",
+            type=json.loads,
+            required=False,
+            help=("Type mismatches that will be considered intended."
+                  "ex. '[(http://www.w3.org/2001/XMLSchema#integer, "
+                  "http://www.w3.org/2001/XMLSchema#int..."
+                  "(http://www.w3.org/2001/XMLSchema#float,"
+                  "http://www.w3.org/2001/XMLSchema#double)]'"
+            ),
+        )
+        args["system"] = arg(
+            "--system",
+            type=str,
+            choices=Containerize.supported_systems(),
+            default="docker",
+            help="Which system to use to run the tests in"
+        )
+        args["engine"] = arg(
+            "--engine",
+            type=str,
+            choices=["qlever", "mdb", "oxigraph", "qlever-binaries"],
+            default="docker",
+            help="Which system to use to run the tests in"
+        )
+        return args
+
+    @staticmethod
     def all_arguments():
         """
         Define all possible parameters. A value of `None` means that there is
@@ -41,6 +99,22 @@ class Qleverfile:
         server_args = all_args["server"] = {}
         runtime_args = all_args["runtime"] = {}
         ui_args = all_args["ui"] = {}
+        all_args["conformance"] = (
+            Qleverfile.get_conformance_arguments(arg)
+        )
+        qlever_binaries_args = all_args["qlever_binaries"] = {}
+        qlever_binaries_args["image"] = arg(
+            "--image",
+            type=str,
+            default="docker.io/adfreiburg/qlever",
+            help="The name of the image when running in a container",
+        )
+        qlever_binaries_args["binaries_directory"] = arg(
+            "--binaries-directory",
+            type=str,
+            required=True,
+            help="Path to the directory of the IndexBuilderMain and ServerMain binaries.",
+        )
 
         data_args["name"] = arg(
             "--name", type=str, required=True, help="The name of the dataset"

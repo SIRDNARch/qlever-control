@@ -1,7 +1,7 @@
 from sparql_conformance.util import escape, is_number
 from io import StringIO
 import csv
-from sparql_conformance.models import FAILED, PASSED, INTENDED, RESULTS_NOT_THE_SAME, INTENDED_MSG
+from sparql_conformance.test_object import Status, ErrorMessage
 
 
 def write_csv_file(file_path: str, csv_rows: list):
@@ -221,8 +221,8 @@ def compare_sv(
         tuple(int, str, str, str, str, str): A tuple of test status and error message and expected html, query html, expected red, query red
     """
     map_bnodes = {}
-    status = FAILED
-    error_type = RESULTS_NOT_THE_SAME
+    status = Status.FAILED
+    error_type = ErrorMessage.RESULTS_NOT_THE_SAME
 
     expected_array = convert_csv_tsv_to_array(expected_string, result_format)
     actual_array = convert_csv_tsv_to_array(query_result, result_format)
@@ -241,7 +241,7 @@ def compare_sv(
         map_bnodes)
 
     if len(actual_array_copy) == 0 and len(expected_array_copy) == 0:
-        status = PASSED
+        status = Status.PASSED
         error_type = ""
     else:
         actual_array_mark_red = actual_array_copy.copy()
@@ -256,8 +256,8 @@ def compare_sv(
             map_bnodes)
         if len(actual_array_mark_red) == 0 and len(
                 expected_array_mark_red) == 0:
-            status = INTENDED
-            error_type = INTENDED_MSG
+            status = Status.INTENDED
+            error_type = ErrorMessage.INTENDED_MSG
 
     expected_html = generate_highlighted_string_sv(
         expected_array,

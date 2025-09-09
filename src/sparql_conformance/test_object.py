@@ -1,59 +1,41 @@
+from enum import Enum
 from typing import Optional, List, Union, Dict, Any
+
+from sparql_conformance.config import Config
 from sparql_conformance.util import local_name, read_file, escape
 import os
 import json
 
-# Test status constants
-FAILED = 'Failed'
-PASSED = 'Passed'
-INTENDED = 'Failed: Intended'
-QUERY_EXCEPTION = 'QUERY EXCEPTION'
-REQUEST_ERROR = 'REQUEST ERROR'
-QUERY_ERROR = 'QUERY RESULT ERROR'
-INDEX_BUILD_ERROR = 'INDEX BUILD ERROR'
-SERVER_ERROR = 'SERVER ERROR'
-NOT_TESTED = 'NOT TESTED'
-RESULTS_NOT_THE_SAME = 'RESULTS NOT THE SAME'
-INTENDED_MSG = 'Known, intended behaviour that does not comply with SPARQL standard'
-EXPECTED_EXCEPTION = 'EXPECTED: QUERY EXCEPTION ERROR'
-FORMAT_ERROR = 'QUERY RESULT FORMAT ERROR'
-NOT_SUPPORTED = 'QUERY NOT SUPPORTED'
-CONTENT_TYPE_NOT_SUPPORTED = 'CONTENT TYPE NOT SUPPORTED'
-QUERY_ERRORS = [QUERY_EXCEPTION, QUERY_ERROR, REQUEST_ERROR, NOT_SUPPORTED, CONTENT_TYPE_NOT_SUPPORTED]
+class Status(str, Enum):
+    PASSED = "Passed"
+    INTENDED = "Failed: Intended"
+    FAILED = "Failed"
+    NOT_TESTED = "Not tested"
 
+class ErrorMessage(str, Enum):
+    QUERY_EXCEPTION = "QUERY EXCEPTION"
+    REQUEST_ERROR = "REQUEST ERROR"
+    QUERY_ERROR = "QUERY RESULT ERROR"
+    INDEX_BUILD_ERROR = "INDEX BUILD ERROR"
+    SERVER_ERROR = "SERVER ERROR"
+    NOT_TESTED = "NOT TESTED"
+    RESULTS_NOT_THE_SAME = "RESULTS NOT THE SAME"
+    INTENDED_MSG = "Known, intended behaviour that does not comply with SPARQL standard"
+    EXPECTED_EXCEPTION = "EXPECTED: QUERY EXCEPTION ERROR"
+    FORMAT_ERROR = "QUERY RESULT FORMAT ERROR"
+    NOT_SUPPORTED = "QUERY NOT SUPPORTED"
+    CONTENT_TYPE_NOT_SUPPORTED = "CONTENT TYPE NOT SUPPORTED"
 
-class Config:
-    """Configuration class for SPARQL test suite execution."""
-
-    def __init__(self, config: Dict[str, Any]):
-        """
-        Initialize configuration with settings from dictionary.
-        """
-        self.HOST = config.get('HOST')
-        self.GRAPHSTORE = config.get('GRAPHSTORE')
-        self.NEWPATH = config.get('NEWPATH')
-        self.alias = config.get('alias')
-        self.number_types = config.get('number_types')
-        self.path_to_test_suite = os.path.abspath(config.get('path_to_testsuite'))
-        self.path_to_binaries = os.path.abspath(config.get('path_to_binaries'))
-        self.command_index = config.get('command_index')
-        self.command_start_server = config.get('command_start_server')
-        self.command_stop_server = config.get('command_stop_server')
-        self.command_remove_index = config.get('command_remove_index')
-        self.server_address = config.get('server_address')
-        self.port = config.get('port')
-        self.exclude = config.get('exclude')
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert configuration to dictionary format."""
-        return {
-            'alias': self.alias,
-            'number_types': self.number_types,
-            'HOST': self.HOST,
-            'GRAPHSTORE': self.GRAPHSTORE,
-            'NEWPATH': self.NEWPATH
-        }
-
+    @classmethod
+    def is_query_error(cls, error: str) -> bool:
+        """Subset of query-related errors."""
+        return error in [
+            cls.QUERY_EXCEPTION,
+            cls.QUERY_ERROR,
+            cls.REQUEST_ERROR,
+            cls.NOT_SUPPORTED,
+            cls.CONTENT_TYPE_NOT_SUPPORTED,
+        ]
 
 def process_graph_data(graph_data: Union[None, str, Dict, List], target_dict: Dict[str, str]) -> None:
     """
@@ -136,7 +118,7 @@ class TestObject:
         self.feature = feature
         self.config = config
 
-        self.status = NOT_TESTED
+        self.status = Status.NOT_TESTED
         self.index_files: Dict[str, str] = {}
         self.result_files: Dict[str, str] = {}
 

@@ -3,17 +3,18 @@ import re
 import json
 from typing import Tuple
 
-from sparql_conformance.models import TestObject, FAILED, PASSED, RESULTS_NOT_THE_SAME
+from sparql_conformance.engines.manager import EngineManager
+from sparql_conformance.test_object import TestObject, Status, ErrorMessage
 from sparql_conformance.rdf_tools import compare_ttl
 
 
-def prepare_request(test: TestObject, request_with_reponse: str, newpath: str) -> Tuple[str, str]:
+def prepare_request(engine_manager: EngineManager, test: TestObject, request_with_reponse: str, newpath: str) -> Tuple[str, str]:
     request = request_with_reponse.split('#### Response')[0]
     # Quick fix: change the x-www-url-form-urlencoded content type to x-www-form-urlencoded
     request = request.replace('application/x-www-url-form-urlencoded', 'application/x-www-form-urlencoded')
     if test.type_name == 'GraphStoreProtocolTest':
         request = request.replace(
-            '$HOST$', test.config.HOST)
+            '$HOST$', 'localhost')
         request = request.replace(
             '$NEWPATH$', newpath)
     before_header = True
@@ -29,6 +30,7 @@ def prepare_request(test: TestObject, request_with_reponse: str, newpath: str) -
                 'PUT') or line.startswith('DELETE') or line.startswith('HEAD'):
             before_header = False
             index_header = index
+            line = line.replace('sparql', engine_manager.protocol_endpoint())
         if line.startswith('GET') and not line.endswith('HTTP/1.1'):
             request_lines[index] = line + ' HTTP/1.1'
     request_header_lines = request_lines[index_header:index_line_between]
@@ -53,7 +55,7 @@ def prepare_response(test: TestObject, request_with_reponse: str, newpath: str) 
     response_string = request_with_reponse.split('#### Response')[1]
     if test.type_name == 'GraphStoreProtocolTest':
         response_string = response_string.replace(
-            '$HOST$', test.config.HOST)
+            '$HOST$', 'localhost')
         response_string = response_string.replace(
             '$GRAPHSTORE$', test.config.GRAPHSTORE)
         response_string = response_string.replace(
@@ -193,13 +195,14 @@ def compare_response(expected_response: dict[str, str | list[str]], got_response
 
 
 def run_protocol_test(
+        engine_manager: EngineManager,
         test: TestObject,
         test_protocol: str,
         newpath: str) -> tuple:
     server_address = 'localhost'
     port = test.config.port
-    result = FAILED
-    error_type = RESULTS_NOT_THE_SAME
+    result = Status.FAILED
+    error_type = ErrorMessage.RESULTS_NOT_THE_SAME
     status = []
     if 'followed by' in test_protocol:
         test_request_split = test_protocol.split('followed by')
@@ -212,7 +215,7 @@ def run_protocol_test(
     responses = []
     got_responses = []
     for request_with_reponse in test_request_split:
-        request_head, request_body = prepare_request(test, request_with_reponse, newpath)
+        request_head, request_body = prepare_request(engine_manager, test, request_with_reponse, newpath)
         requests.append(request_head + request_body)
         response = prepare_response(test, request_with_reponse, newpath)
         responses.append(response)
@@ -228,7 +231,7 @@ def run_protocol_test(
         status.append(matching)
         tn.close()
     if all(status):
-        result = PASSED
+        result = Status.PASSED
         error_type = ''
     extracted_expected_responses = ''
     for response in responses:

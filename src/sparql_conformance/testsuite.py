@@ -1,21 +1,19 @@
 from typing import List, Dict, Tuple
 
-import sparql_conformance.config_manager as config_manager
 import os
 import sys
 import json
 import bz2
 
+from sparql_conformance.engines.manager import EngineManager
 from sparql_conformance.engines.qlever_binary import QLeverBinaryManager
-from sparql_conformance.models import TestObject, Config, FAILED, PASSED, QUERY_EXCEPTION, REQUEST_ERROR, QUERY_ERROR, INDEX_BUILD_ERROR, SERVER_ERROR, RESULTS_NOT_THE_SAME, EXPECTED_EXCEPTION, NOT_SUPPORTED, QUERY_ERRORS, CONTENT_TYPE_NOT_SUPPORTED
-import sparql_conformance.models as vars
+from sparql_conformance.test_object import TestObject, Status, ErrorMessage
 from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.xml_tools import compare_xml
 from sparql_conformance.tsv_csv_tools import compare_sv
 from sparql_conformance.json_tools import compare_json
 from sparql_conformance.rdf_tools import compare_ttl
 from sparql_conformance.protocol_tools import run_protocol_test, compare_response
-from sparql_conformance.engine_manager import get_engine_manager
 import sparql_conformance.util as util
 
 
@@ -24,7 +22,7 @@ class TestSuite:
     A class to represent a test suite for SPARQL using QLever.
     """
 
-    def __init__(self, name: str, tests: Dict[str, Dict[Tuple[Tuple[str, str], ...], List[TestObject]]], test_count, config: Config, engine_type: str = 'qlever-binaries'):
+    def __init__(self, name: str, tests: Dict[str, Dict[Tuple[Tuple[str, str], ...], List[TestObject]]], test_count, config: Config, engine_manager: EngineManager):
         """
         Constructs all the necessary attributes for the TestSuite object.
 
@@ -38,7 +36,7 @@ class TestSuite:
         self.passed = 0
         self.failed = 0
         self.passed_failed = 0
-        self.engine_manager = get_engine_manager(engine_type)
+        self.engine_manager = engine_manager
 
     def evaluate_query(
             self,
@@ -55,8 +53,8 @@ class TestSuite:
             query_result (str): The actual output received from the query.
             result_format (str): The format of the query output ("csv", "tsv", "srx", "srj").
         """
-        status = FAILED
-        error_type = RESULTS_NOT_THE_SAME
+        status = Status.FAILED
+        error_type = ErrorMessage.RESULTS_NOT_THE_SAME
         if result_format == "srx":
             status, error_type, expected_html, test_html, expected_red, test_red = compare_xml(
                 expected_string, query_result, self.config.alias, self.config.number_types)
@@ -89,8 +87,8 @@ class TestSuite:
             expected_graphs ([str]]): The expected state of each graph.
             graphs ([str]): The actual state of our graphs.
         """
-        status = [FAILED for i in range(len(expected_graphs))]
-        error_type = [RESULTS_NOT_THE_SAME for i in range(len(expected_graphs))]
+        status = [Status.FAILED for i in range(len(expected_graphs))]
+        error_type = [ErrorMessage.RESULTS_NOT_THE_SAME for i in range(len(expected_graphs))]
         expected_html = ["" for i in range(len(expected_graphs))]
         test_html = ["" for i in range(len(expected_graphs))]
         expected_red = ["" for i in range(len(expected_graphs))]
@@ -101,7 +99,7 @@ class TestSuite:
                     expected_graphs[i], graphs[i])
             
         for s, e in zip(status, error_type):
-            if s != PASSED:
+            if s != Status.PASSED:
                 status[0] = s
                 error_type[0] = e
                 break
@@ -186,10 +184,10 @@ class TestSuite:
         index_success, server_success, index_log, server_log = self.engine_manager.setup(self.config, graph_paths)
         if not index_success:
             self.engine_manager.cleanup(self.config)
-            self.update_graph_status(list_of_tests, FAILED, INDEX_BUILD_ERROR)
+            self.update_graph_status(list_of_tests, Status.FAILED, ErrorMessage.INDEX_BUILD_ERROR)
         if not server_success:
             self.engine_manager.cleanup(self.config)
-            self.update_graph_status(list_of_tests, FAILED, SERVER_ERROR)
+            self.update_graph_status(list_of_tests, Status.FAILED, ErrorMessage.SERVER_ERROR)
         if isinstance(self.engine_manager, QLeverBinaryManager) and index_success and server_success and "Syntax" in list_of_tests[0].type_name:
             self.engine_manager.activate_syntax_test_mode(self.config.server_address, self.config.port)
         self.log_for_all_tests(list_of_tests, "index_log", index_log)
@@ -201,20 +199,20 @@ class TestSuite:
             query_log = json.loads(
                 query_response[1])["exception"].replace(
                 ";", ";\n")
-            error_type = QUERY_EXCEPTION
+            error_type = ErrorMessage.QUERY_EXCEPTION
         elif "HTTP Request" in query_response[1]:
-            error_type = REQUEST_ERROR
+            error_type = ErrorMessage.REQUEST_ERROR
             query_log = query_response[1]
         elif "not supported" in query_response[1]:
-            error_type = NOT_SUPPORTED
+            error_type = ErrorMessage.NOT_SUPPORTED
             if "content type" in query_response[1]:
-                error_type = CONTENT_TYPE_NOT_SUPPORTED
+                error_type = ErrorMessage.CONTENT_TYPE_NOT_SUPPORTED
             query_log = query_response[1]
         else:
-            error_type = QUERY_ERROR
+            error_type = ErrorMessage.QUERY_ERROR
             query_log = query_response[1]
         setattr(test, "query_log", query_log)
-        self.update_test_status(test, FAILED, error_type)
+        self.update_test_status(test, Status.FAILED, error_type)
 
     def run_query_tests(self, graphs_list_of_tests):
         """
@@ -326,14 +324,14 @@ class TestSuite:
                     self.process_failed_response(test, query_result)
                 else:
                     setattr(test, "query_log", query_result[1])
-                    self.update_test_status(test, PASSED, "")
+                    self.update_test_status(test, Status.PASSED, "")
                 if test.type_name == "NegativeSyntaxTest11" or test.type_name == "NegativeUpdateSyntaxTest11":
-                    if test.error_type in QUERY_ERRORS:
-                        status = PASSED
+                    if ErrorMessage.is_query_error(test.error_type):
+                        status = Status.PASSED
                         error_type = ""
                     else:
-                        status = FAILED
-                        error_type = EXPECTED_EXCEPTION
+                        status = Status.FAILED
+                        error_type = ErrorMessage.EXPECTED_EXCEPTION
                     self.update_test_status(test, status, error_type)
 
             if os.path.exists("./TestSuite.server-log.txt"):
@@ -365,7 +363,7 @@ class TestSuite:
                     break
                 if test.comment:
                     status, error_type, extracted_expected_responses, extracted_sent_requests, got_responses, newpath = run_protocol_test(
-                        test, test.comment, '')
+                        self.engine_manager, test, test.comment, '')
 
                     if os.path.exists("./TestSuite.server-log.txt"):
                         server_log = util.read_file(
@@ -402,7 +400,7 @@ class TestSuite:
                 print(f"Running: {test.name}")
                 if test.comment:
                     status, error_type, extracted_expected_responses, extracted_sent_requests, got_responses, new_newpath = run_protocol_test(
-                        test, test.comment, newpath)
+                        self.engine_manager, test, test.comment, newpath)
                     if new_newpath != '':
                         newpath = new_newpath
                     self.update_test_status(test, status, error_type)
@@ -458,11 +456,11 @@ class TestSuite:
             for graph in self.tests[test_format]:
                 for test in self.tests[test_format][graph]:
                     match test.status:
-                        case vars.PASSED:
+                        case Status.PASSED:
                             self.passed += 1
-                        case vars.FAILED:
+                        case Status.FAILED:
                             self.failed += 1
-                        case vars.INTENDED:
+                        case Status.INTENDED:
                             self.passed_failed += 1
                     # This will add a number behind the name if the name is not
                     # unique
@@ -492,41 +490,3 @@ class TestSuite:
                 self.passed_failed)}
         print("Writing file...")
         self.compress_json_bz2(data, file_path)
-
-def main():
-    args = sys.argv[1:]
-    if len(args) < 1:
-        print(f"  Usage to create config: python3 {sys.argv[0]} config <server address> <port> <path to testsuite> <path to the qlever binaries>  <graph store implementation host> <path of the URL of the graph store> <URL returned in the Location HTTP header>\n  Usage to extract tests: python3 {sys.argv[0]} extract \n  Usage to run tests: python3 {sys.argv[0]} <name for the test suite run>")
-        return
-
-    if args[0] == "config":
-        if len(args) == 8:
-            print(f"Create basic config.")
-            config_manager.create_config(
-                args[1], args[2], args[3], args[4], args[5], args[6], args[7])
-        else:
-            print(
-                f"Usage to create config: python3 {sys.argv[0]} config <server address> <port> <path to testsuite> <path to the qlever binaries> <graph store implementation host> <path of the URL of the graph store> <URL returned in the Location HTTP header>")
-            return
-
-    config = config_manager.initialize_config()
-
-    if len(args) == 1 and args[0] != "config" and args[0] != "extract":
-        if config is None:
-            return
-        print("Read tests!")
-        tests, test_count = extract_tests(config)
-        test_suite = TestSuite(args[0], tests, test_count, config)
-        print("Run tests!")
-        test_suite.run()
-        test_suite.generate_json_file()
-    elif args[0] != "config" and args[0] != "extract":
-        print(f"  Usage to create config: python3 {sys.argv[0]} config <server address> <port> <path to testsuite> <path to binaries> <graph store implementation host> <path of the URL of the graph store> <URL returned in the Location HTTP header> \n  Usage to extract tests: python3 {sys.argv[0]} extract \n  Usage to run tests: python3 {sys.argv[0]} <name for the test suite run>")
-        return
-    print("Done!")
-    return
-
-
-
-if __name__ == "__main__":
-    main()

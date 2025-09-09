@@ -1,5 +1,5 @@
 import rdflib
-from sparql_conformance.models import FAILED, PASSED, RESULTS_NOT_THE_SAME, FORMAT_ERROR, NOT_TESTED
+from sparql_conformance.test_object import Status, ErrorMessage
 import os
 import re
 from sparql_conformance.util import escape
@@ -66,21 +66,8 @@ def highlight_differences(turtle_data, diff):
     return serialized_turtle
 
 def compare_ttl(expected_ttl: str, query_ttl: str) -> tuple:
-    """
-    Compares two XML documents, identifies differences and generates HTML representations.
-
-    This method compares two XML documents and identifies differences.
-    It removes equal elements in both documents and generates HTML representations highlighting the remaining differences.
-
-    Parameters:
-        expected_xml (str): The expected XML content as a string.
-        query_xml (str): The query XML content as a string.
-
-    Returns:
-        tuple (bool,str,str,str,str,str): A tuple containing the status, error type and the strings XML1, XML2, XML1 RED, XML2 RED
-    """
-    status = FAILED
-    error_type = RESULTS_NOT_THE_SAME
+    status = Status.FAILED
+    error_type = ErrorMessage.RESULTS_NOT_THE_SAME
     expected_graph = rdflib.Graph()
     query_graph = rdflib.Graph()
     try:
@@ -90,15 +77,15 @@ def compare_ttl(expected_ttl: str, query_ttl: str) -> tuple:
         try:
             expected_graph.parse(data=expected_ttl, format="turtle")
         except Exception as e:
-            error_type = FORMAT_ERROR
+            error_type = ErrorMessage.FORMAT_ERROR
             escaped_expected = f'<label class="red">{escape(expected_ttl)}</label>'
-            return NOT_TESTED, error_type, escaped_expected, escape(query_ttl), f'<label class="red">{e}</label>', escape(
+            return Status.NOT_TESTED, error_type, escaped_expected, escape(query_ttl), f'<label class="red">{e}</label>', escape(
                 query_ttl)
 
     try:
         query_graph.parse(data=query_ttl, format="turtle")
     except Exception as e:
-        error_type = FORMAT_ERROR
+        error_type = ErrorMessage.FORMAT_ERROR
         escaped_query = f'<label class="red">{escape(query_ttl)}</label>'
         escaped_expected = f'<label class="red">{escape(expected_ttl)}</label>'
         return status, error_type, escape(
@@ -107,7 +94,7 @@ def compare_ttl(expected_ttl: str, query_ttl: str) -> tuple:
     is_isomorphic = expected_graph.isomorphic(query_graph)
 
     if is_isomorphic:
-        status = PASSED
+        status = Status.PASSED
         error_type = ""
         expected_string = escape(expected_ttl)
         query_string = escape(query_ttl)

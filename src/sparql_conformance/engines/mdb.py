@@ -12,8 +12,8 @@ from qmdb.commands.query import QueryCommand
 from qmdb.commands.start import StartCommand
 from qmdb.commands.stop import StopCommand
 from sparql_conformance import util
+from sparql_conformance.config import Config
 from sparql_conformance.engines.manager import EngineManager
-from sparql_conformance.models import Config
 from sparql_conformance.rdf_tools import write_ttl_file, rdf_xml_to_turtle, delete_ttl_file
 
 
@@ -134,7 +134,7 @@ class MDBManager(EngineManager):
 
         return index_success, server_success, index_log, server_log
 
-    def _stop_server(self, port: int) -> Tuple[bool, str]:
+    def _stop_server(self, port: str) -> Tuple[bool, str]:
         """
         Stop the MillenniumDB (mdb) server listening on the given port.
         """

@@ -1,5 +1,5 @@
 import json
-from sparql_conformance.models import FAILED, PASSED, INTENDED, RESULTS_NOT_THE_SAME, INTENDED_MSG
+from sparql_conformance.test_object import Status, ErrorMessage
 
 
 def read_json_file(file_path: str):
@@ -317,8 +317,8 @@ def compare_json(
         tuple: A tuple containing the status and error type.
     """
     map_bnodes = {}
-    status = FAILED
-    error_type = RESULTS_NOT_THE_SAME
+    status = Status.FAILED
+    error_type = ErrorMessage.RESULTS_NOT_THE_SAME
     expected = json.loads(expected_json)
     query = json.loads(query_json)
 
@@ -369,7 +369,7 @@ def compare_json(
             query["results"]["bindings"]) == 0 and len(
             expected["head"]["vars"]) == 0 and len(
                 query["head"]["vars"]) == 0:
-            status = PASSED
+            status = Status.PASSED
             error_type = ""
         else:
             unique_bindings1 = remove_once_found(
@@ -377,8 +377,8 @@ def compare_json(
             unique_bindings2 = remove_once_found(
                 bindings2, bindings1, True, alias, number_types, map_bnodes)
             if len(unique_bindings1) == 0 and len(unique_bindings2) == 0:
-                status = INTENDED
-                error_type = INTENDED_MSG
+                status = Status.INTENDED
+                error_type = ErrorMessage.INTENDED_MSG
         expected_string = generate_highlighted_string_json(
             json.loads(expected_json), expected, unique_bindings1)
         query_string = generate_highlighted_string_json(
@@ -393,7 +393,7 @@ def compare_json(
         if str(bool1) == str(bool2):
             del expected["boolean"]
             del query["boolean"]
-            status = PASSED
+            status = Status.PASSED
             error_type = ""
         expected_string = generate_highlighted_string_json(
             json.loads(expected_json), expected, [])

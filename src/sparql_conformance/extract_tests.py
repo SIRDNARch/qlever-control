@@ -1,8 +1,10 @@
 import os
 from rdflib import Graph, Namespace, RDF, URIRef
 from typing import Union, Dict, Any, List, Tuple, Optional, Set
+
+from .config import Config
 from .util import uri_to_path, local_name
-from .models import TestObject, Config
+from .test_object import TestObject
 
 # Namespaces
 MF = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#")

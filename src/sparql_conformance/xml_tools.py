@@ -1,7 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as md
-from sparql_conformance.models import FAILED, PASSED, INTENDED, RESULTS_NOT_THE_SAME, INTENDED_MSG
+from sparql_conformance.test_object import Status, ErrorMessage
 from sparql_conformance.util import escape
 
 
@@ -377,8 +377,8 @@ def compare_xml(
     query_xml = md.parseString(query_xml).toxml()
     query_xml = md.parseString(query_xml).toprettyxml(indent="  ")
     map_bnodes = {}
-    status = FAILED
-    error_type = RESULTS_NOT_THE_SAME
+    status = Status.FAILED
+    error_type = ErrorMessage.RESULTS_NOT_THE_SAME
     expected_tree = ET.ElementTree(ET.fromstring(expected_xml))
     query_tree = ET.ElementTree(ET.fromstring(query_xml))
 
@@ -438,7 +438,7 @@ def compare_xml(
                 list(head1)) == 0 and len(
                     list(head2)) == 0) or (
                         results1 is None and results2 is None and head1 is None and head2 is None and bool1 is None and bool2 is None):
-        status = PASSED
+        status = Status.PASSED
         error_type = ""
     else:
         if results1 is not None and results2 is not None:
@@ -451,10 +451,10 @@ def compare_xml(
                 map_bnodes)
 
             if len(list(results1)) == 0 and len(list(results2)) == 0:
-                status = INTENDED
-                error_type = INTENDED_MSG
+                status = Status.INTENDED
+                error_type = ErrorMessage.INTENDED_MSG
         elif expected_bool is None and query_bool is None:
-            status = PASSED
+            status = Status.PASSED
             error_type = ""
 
     expected_string, query_string, expected_string_red, query_string_red = generate_html_for_xml(

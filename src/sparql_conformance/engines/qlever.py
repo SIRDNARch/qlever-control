@@ -1,20 +1,17 @@
 import json
 import os
-import shutil
-import sys
 from pathlib import Path
 from argparse import Namespace
 from typing import Tuple, List
-import io
 
 from qlever.commands.query import QueryCommand
 from qlever.log import mute_log
 from qlever.util import run_command
 from qlever.commands.start import StartCommand
 from qlever.commands.stop import StopCommand
+from sparql_conformance.config import Config
 from sparql_conformance.engines.manager import EngineManager
 from sparql_conformance import util
-from sparql_conformance.models import Config
 from qlever.commands.index import IndexCommand
 from sparql_conformance.rdf_tools import write_ttl_file, delete_ttl_file, rdf_xml_to_turtle
 
@@ -91,7 +88,7 @@ class QLeverManager(EngineManager):
             delete_ttl_file(path)
         return index_success, server_success, index_log, server_log
 
-    def _stop_server(self, port: int) -> Tuple[bool, str]:
+    def _stop_server(self, port: str) -> Tuple[bool, str]:
         args = Namespace(
             name='sparql-conformance-index',
             port=port,
@@ -108,7 +105,7 @@ class QLeverManager(EngineManager):
             return False, error_output
         return result, 'Success'
 
-    def _start_server(self, host: str, port: int) -> Tuple[bool, str]:
+    def _start_server(self, host: str, port: str) -> Tuple[bool, str]:
         args = Namespace(
             name='sparql-conformance-index',
             description='',
