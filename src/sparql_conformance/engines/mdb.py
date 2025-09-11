@@ -48,15 +48,7 @@ class MDBManager(EngineManager):
                     shutil.rmtree("index", ignore_errors=True)
             except Exception:
                 pass
-
-            try:
-                run_command("rm -f sparql-conformance-index.index-log.txt")
-            except Exception:
-                pass
-            try:
-                run_command("rm -f conformance.server-log.txt")
-            except Exception:
-                pass
+            run_command('rm -f mdb-sparql-conformance*')
 
     def _query(self, config: Config, query: str, query_type: str, result_format: str) -> Tuple[int, str]:
         content_type = "query=" if query_type == "rq" else "update="
@@ -113,19 +105,11 @@ class MDBManager(EngineManager):
                 use_path = util.copy_graph_to_workdir(graph_path, os.getcwd())
             graphs.append((use_path, graph_name))
 
-        index_success, index_log = self._index(graphs)
-        if not index_success:
-            for path, _ in graphs:
-                try:
-                    delete_ttl_file(path)
-                except Exception:
-                    pass
-            return index_success, server_success, index_log, ""
-
-        server_success, server_log = self._start_server(
-            config.server_address,
-            config.port
-        )
+        index_success, index_log = self._index(config, graphs)
+        if index_success:
+            server_success, server_log = self._start_server(
+                config
+            )
         for path, _ in graphs:
             try:
                 delete_ttl_file(path)
@@ -140,7 +124,7 @@ class MDBManager(EngineManager):
         """
         args = Namespace(
             port=port,
-            server_container="sparql-conformance-server",
+            server_container="mdb-sparql-conformance-server-container",
             system="docker",
             cmdline_regex=StopCommand.DEFAULT_REGEX,
             show=False,
@@ -154,7 +138,7 @@ class MDBManager(EngineManager):
 
         return result, "Success"
 
-    def _start_server(self, host: str, port: int) -> Tuple[bool, str]:
+    def _start_server(self, config: Config) -> Tuple[bool, str]:
         """
         Start the MillenniumDB (mdb) server.
 
@@ -162,12 +146,12 @@ class MDBManager(EngineManager):
             (success, server_log)
         """
         args = Namespace(
-            name="sparql-conformance-server",
-            host_name=host,
-            port=port,
+            name="mdb-sparql-conformance",
+            host_name=config.server_address,
+            port=config.port,
             system="docker",
             image="millenniumdb-image",
-            server_container="sparql-conformance-server",
+            server_container="mdb-sparql-conformance-server-container",
             run_in_foreground=False,
             server_binary="mdb server",
             show=False,
@@ -179,12 +163,12 @@ class MDBManager(EngineManager):
         except Exception as e:
             return False, str(e)
 
-        log_path = "./sparql-conformance-server.server-log.txt"
+        log_path = "./mdb-sparql-conformance.server-log.txt"
         server_log = util.read_file(log_path) if os.path.exists(log_path) else ""
 
         return result, server_log
 
-    def _index(self, graph_paths: List[Tuple[str, str]]) -> Tuple[bool, str]:
+    def _index(self, config: Config, graph_paths: List[Tuple[str, str]]) -> Tuple[bool, str]:
         """
         Build the MillenniumDB (mdb) index for the given graphs.
 
@@ -195,11 +179,11 @@ class MDBManager(EngineManager):
         input_files = " ".join(path for path, _ in graph_paths) if graph_paths else "*.ttl"
 
         args = Namespace(
-            name="sparql-conformance-index",
+            name="mdb-sparql-conformance",
             input_files=input_files,
             system="docker",
             image="millenniumdb-image",
-            index_container="sparql-conformance-container",
+            index_container="mdb-sparql-conformance-index-container",
             index_binary="mdb import",
             show=False,
         )
@@ -211,7 +195,7 @@ class MDBManager(EngineManager):
             return False, str(e)
 
         index_log = ""
-        log_path = "./sparql-conformance-index.index-log.txt"
+        log_path = "./mdb-sparql-conformance.index-log.txt"
         if os.path.exists(log_path):
             index_log = util.read_file(log_path)
 
@@ -237,11 +221,11 @@ class MDBManager(EngineManager):
             (success, index_log)
         """
         args = Namespace(
-            name="sparql-conformance-index",
+            name="mdb-sparql-conformance",
             input_files=graph_path,
             system="docker",
             image="millenniumdb-image",
-            index_container="sparql-conformance-container",
+            index_container="mdb-sparql-conformance-container",
             index_binary="mdb import",
             show=False,
         )

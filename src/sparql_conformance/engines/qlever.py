@@ -28,7 +28,7 @@ class QLeverManager(EngineManager):
     def cleanup(self, config: Config):
         self._stop_server(config.port)
         with mute_log():
-            run_command('rm -f sparql-conformance-index*')
+            run_command('rm -f qlever-sparql-conformance*')
 
     def query(self, config: Config, query: str, result_format: str) -> Tuple[int, str]:
         return self._query(config, query, "rq", result_format)
@@ -74,13 +74,11 @@ class QLeverManager(EngineManager):
                 graph_path = util.copy_graph_to_workdir(graph_path, os.getcwd())
             graphs.append((graph_path, graph_name))
 
-        index_success, index_log = self._index(graphs)
+        index_success, index_log = self._index(config, graphs)
         if not index_success:
             return index_success, server_success, index_log, ''
         else:
-            server_success, server_log = self._start_server(
-                config.server_address,
-                config.port)
+            server_success, server_log = self._start_server(config)
 
             if not server_success:
                 return index_success, server_success, index_log, server_log
@@ -90,9 +88,9 @@ class QLeverManager(EngineManager):
 
     def _stop_server(self, port: str) -> Tuple[bool, str]:
         args = Namespace(
-            name='sparql-conformance-index',
+            name='qlever-sparql-conformance',
             port=port,
-            server_container='sparql-conformance-server',
+            server_container='qlever-sparql-conformance-server-container',
             cmdline_regex=f"^ServerMain.* -p {port}",
             no_containers=False,
             show=False
@@ -105,14 +103,14 @@ class QLeverManager(EngineManager):
             return False, error_output
         return result, 'Success'
 
-    def _start_server(self, host: str, port: str) -> Tuple[bool, str]:
+    def _start_server(self, config: Config) -> Tuple[bool, str]:
         args = Namespace(
-            name='sparql-conformance-index',
+            name='qlever-sparql-conformance',
             description='',
             text_description='',
             server_binary='ServerMain',
-            host_name=host,
-            port=port,
+            host_name=config.server_address,
+            port=config.port,
             access_token='abc',
             memory_for_queries='4GB',
             cache_max_size='1GB',
@@ -125,9 +123,9 @@ class QLeverManager(EngineManager):
             use_patterns=True,
             use_text_index='no',
             warmup_cmd=None,
-            system='docker',
-            image='docker.io/adfreiburg/qlever:latest',
-            server_container='sparql-conformance-server',
+            system=config.system,
+            image=config.image,
+            server_container='qlever-sparql-conformance-server-container',
             kill_existing_with_same_port=False,
             no_warmup=True,
             run_in_foreground=False,
@@ -141,20 +139,20 @@ class QLeverManager(EngineManager):
             return False, error_output
 
         server_log = ''
-        if os.path.exists('./sparql-conformance-index.server-log.txt'):
-            server_log = util.read_file('./sparql-conformance-index.server-log.txt')
+        if os.path.exists('./qlever-sparql-conformance.server-log.txt'):
+            server_log = util.read_file('./qlever-sparql-conformance.server-log.txt')
         return result, server_log
 
-    def _index(self, graph_paths: List[Tuple[str, str]]) -> Tuple[bool, str]:
+    def _index(self, config: Config, graph_paths: List[Tuple[str, str]]) -> Tuple[bool, str]:
         args = Namespace(
-            name='sparql-conformance-index',
+            name='qlever-sparql-conformance',
             cat_input_files=None,
             multi_input_json=self._generate_multi_input_json(graph_paths),
             input_files='*.ttl',
             format='ttl',
             settings_json='{ "num-triples-per-batch": 1000000 }',
-            system='docker',
-            image='docker.io/adfreiburg/qlever:latest',
+            system=config.system,
+            image=config.image,
             parallel_parsing=False,
             only_pso_and_pos_permutations=False,
             use_patterns=True,
@@ -165,7 +163,7 @@ class QLeverManager(EngineManager):
             show=None,
             overwrite_existing=True,
             index_binary='IndexBuilderMain',
-            index_container='sparql-conformance-container',
+            index_container='qlever-sparql-conformance-index-container',
             vocabulary_type='on-disk-compressed'
         )
         try:
@@ -176,8 +174,8 @@ class QLeverManager(EngineManager):
             return False, error_output
 
         index_log = ''
-        if os.path.exists("./sparql-conformance-index.index-log.txt"):
-            index_log = util.read_file("./sparql-conformance-index.index-log.txt")
+        if os.path.exists("./qlever-sparql-conformance.index-log.txt"):
+            index_log = util.read_file("./qlever-sparql-conformance.index-log.txt")
         return result, index_log
 
     def _generate_multi_input_json(self, graph_paths: List[Tuple[str, str]]) -> str:

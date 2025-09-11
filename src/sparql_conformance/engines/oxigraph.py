@@ -67,7 +67,6 @@ class OxigraphManager(EngineManager):
         server_success = False
         graphs: List[Tuple[str, str]] = []
 
-
         for graph_path, graph_name in graph_paths:
             if graph_path.endswith(".rdf"):
                 tmp_name = Path(graph_path).name.replace(".rdf", ".ttl")
@@ -77,8 +76,7 @@ class OxigraphManager(EngineManager):
                 use_path = util.copy_graph_to_workdir(graph_path, os.getcwd())
             graphs.append((use_path, graph_name))
 
-
-        index_success, index_log = self._index(graphs)
+        index_success, index_log = self._index(config, graphs)
         if not index_success:
             for path, _ in graphs:
                 try:
@@ -87,12 +85,9 @@ class OxigraphManager(EngineManager):
                     pass
             return index_success, server_success, index_log, ""
 
-
         server_success, server_log = self._start_server(
-            config.server_address,
-            config.port
+            config
         )
-
 
         for path, _ in graphs:
             try:
@@ -137,24 +132,22 @@ class OxigraphManager(EngineManager):
                             pass
             except Exception:
                 pass
+        with mute_log():
+            run_command('rm -f oxigraph-sparql-conformance*')
 
-            try:
-                run_command("rm -f sparql-conformance-index.*")
-            except Exception:
-                pass
 
-    def _index(self, graph_paths: List[Tuple[str, str]]) -> Tuple[bool, str]:
+    def _index(self, config: Config, graph_paths: List[Tuple[str, str]]) -> Tuple[bool, str]:
         """
         Build the Oxigraph index for the given input files.
         """
         input_files = " ".join(path for path, _ in graph_paths)
 
         args = Namespace(
-            name="sparql-conformance-index",
+            name="oxigraph-sparql-conformance",
             input_files=input_files,
-            system="docker",
-            image="ghcr.io/oxigraph/oxigraph",
-            index_container="sparql-conformance-index-container",
+            system=config.system,
+            image=config.image,
+            index_container="oxigraph-sparql-conformance-index-container",
             show=False,
         )
 
@@ -164,22 +157,22 @@ class OxigraphManager(EngineManager):
         except Exception as e:
             return False, str(e)
 
-        log_path = "./sparql-conformance-index.index-log.txt"
+        log_path = "./oxigraph-sparql-conformance.index-log.txt"
         index_log = util.read_file(log_path) if os.path.exists(log_path) else ""
 
         return result, index_log
 
-    def _start_server(self, host: str, port: str) -> Tuple[bool, str]:
+    def _start_server(self, config: Config) -> Tuple[bool, str]:
         """
         Start the Oxigraph server.
         """
         args = Namespace(
-            name="sparql-conformance-server",
-            host_name=host,
-            port=port,
-            system="docker",
-            image="ghcr.io/oxigraph/oxigraph",
-            server_container="sparql-conformance-server",
+            name="oxigraph-sparql-conformance",
+            host_name=config.server_address,
+            port=config.port,
+            system=config.system,
+            image=config.image,
+            server_container="oxigraph-sparql-conformance-server-container",
             run_in_foreground=False,
             show=False,
         )
@@ -190,7 +183,7 @@ class OxigraphManager(EngineManager):
         except Exception as e:
             return False, str(e)
 
-        log_path = "./sparql-conformance-index.server-log.txt"
+        log_path = "./oxigraph-sparql-conformance.server-log.txt"
         server_log = util.read_file(log_path) if os.path.exists(log_path) else ""
 
         return result, server_log
@@ -201,7 +194,7 @@ class OxigraphManager(EngineManager):
         """
         args = Namespace(
             system="docker",
-            server_container="sparql-conformance-server",
+            server_container="oxigraph-sparql-conformance-server-container",
             port=port,
             show=False,
             cmdline_regex=StopCommand.DEFAULT_REGEX,
