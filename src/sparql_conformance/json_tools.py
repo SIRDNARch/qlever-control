@@ -246,7 +246,7 @@ def json_elements_equal(
                                 field1.get(sub_key)) == float(
                                 field2.get(sub_key)):
                             continue
-                    if compare_with_intended_behaviour and ((str(field1.get(sub_key)), str(field2.get(sub_key))) in alias or (str(field2.get(sub_key)), str(field1.get(sub_key))) in alias):
+                    if compare_with_intended_behaviour and ((field1.get(sub_key), field2.get(sub_key)) in alias or (field2.get(sub_key), field1.get(sub_key)) in alias):
                         continue
                     return False
         else:
