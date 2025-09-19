@@ -74,7 +74,7 @@ class StartCommand(QleverCommand):
             if args.system == "native"
             else f"0.0.0.0:{args.port}"
         )
-        start_cmd = f"serve-read-only --location . --bind={bind}"
+        start_cmd = f"serve --location . --bind={bind}"
 
         if args.system == "native":
             start_cmd = f"{args.server_binary} {start_cmd}"

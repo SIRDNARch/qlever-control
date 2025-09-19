@@ -5,6 +5,59 @@ from io import StringIO
 import csv
 from sparql_conformance.test_object import Status, ErrorMessage
 
+def _build_column_mapping(expected_header: list, actual_header: list):
+    """
+    Return a list L which aligns actual[row][L[i]] with expected[row][i].
+    Example: actual: s p o expected: o p s -> L[0] = 2, L[1] = 1, L[2] = 0
+    If no perfect mapping exists, return None.
+    """
+    if len(expected_header) != len(actual_header):
+        return None
+
+    wanted = expected_header
+    have = actual_header
+
+    used = set()
+    mapping = []
+    for name in wanted:
+        idx = None
+        for j, col in enumerate(have):
+            if j in used:
+                continue
+            if col.strip() == name.strip():
+                idx = j
+                break
+        if idx is None:
+            return None
+        used.add(idx)
+        mapping.append(idx)
+    return mapping
+
+
+def _reorder_columns_to_expected(expected_array: list, actual_array: list):
+    """
+    If the first rows (headers) of expected/actual are a permutation of each other,
+    reorder every row of the actual array to match the expected header order.
+    Otherwise, just return actual_array.
+    """
+    if not expected_array or not actual_array:
+        return actual_array
+
+    expected_header = expected_array[0]
+    actual_header = actual_array[0]
+
+    if sorted(expected_header) != sorted(actual_header):
+        return actual_array
+
+    mapping = _build_column_mapping(expected_header, actual_header)
+    if mapping is None:
+        return actual_array
+
+    def reorder_row(row):
+        return [row[i] if i < len(row) else "" for i in mapping]
+
+    return [reorder_row(r) for r in actual_array]
+
 
 def write_csv_file(file_path: str, csv_rows: list):
     with open(file_path, "w", newline="") as csvfile:
@@ -228,6 +281,10 @@ def compare_sv(
 
     expected_array = convert_csv_tsv_to_array(expected_string, result_format)
     actual_array = convert_csv_tsv_to_array(query_result, result_format)
+
+    # NEW: normalize actual column order to match expected header
+    actual_array = _reorder_columns_to_expected(expected_array, actual_array)
+
     actual_array_copy = actual_array.copy()
     expected_array_copy = expected_array.copy()
     actual_array_mark_red = []
