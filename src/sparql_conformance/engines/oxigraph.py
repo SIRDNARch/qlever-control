@@ -17,7 +17,7 @@ from sparql_conformance.rdf_tools import write_ttl_file, rdf_xml_to_turtle, dele
 
 class OxigraphManager(EngineManager):
     def protocol_endpoint(self) -> str:
-        return "query"
+        return
 
     def update(self, config: Config, query: str) -> Tuple[int, str]:
         return self._query(config, query, "ru", "json")
@@ -140,25 +140,26 @@ class OxigraphManager(EngineManager):
         """
         Build the Oxigraph index for the given input files.
         """
-        input_files = " ".join(path for path, _ in graph_paths)
+        index_log = ""
+        for graph_path, graph_name in graph_paths:
+            graph = f"--graph http://{graph_name}" if graph_name != "-" else ""
+            input_files = f"{graph_path} {graph}"
+            args = Namespace(
+                name="oxigraph-sparql-conformance",
+                input_files=input_files,
+                system=config.system,
+                image=config.image,
+                index_container="oxigraph-sparql-conformance-index-container",
+                show=False,
+            )
 
-        args = Namespace(
-            name="oxigraph-sparql-conformance",
-            input_files=input_files,
-            system=config.system,
-            image=config.image,
-            index_container="oxigraph-sparql-conformance-index-container",
-            show=False,
-        )
-
-        try:
-            with mute_log(50):
-                result = IndexCommand().execute(args, True)
-        except Exception as e:
-            return False, str(e)
-
-        log_path = "./oxigraph-sparql-conformance.index-log.txt"
-        index_log = util.read_file(log_path) if os.path.exists(log_path) else ""
+            try:
+                with mute_log(50):
+                    result = IndexCommand().execute(args, True)
+            except Exception as e:
+                return False, str(e)
+            log_path = "./oxigraph-sparql-conformance.index-log.txt"
+            index_log += util.read_file(log_path) if os.path.exists(log_path) else "index-log didnt exist"
 
         return result, index_log
 

@@ -67,16 +67,17 @@ class IndexCommand(QleverCommand):
         if args.show:
             return True
 
-        # Check if all of the input files exist.
-        for pattern in shlex.split(args.input_files):
-            if len(glob.glob(pattern)) == 0:
-                log.error(f'No file matching "{pattern}" found')
-                log.info("")
-                log.info(
-                    f"Did you call `{self.script_name} get-data`? If you did, "
-                    "check GET_DATA_CMD and INPUT_FILES in the Qleverfile"
-                )
-                return False
+        if not called_from_conformance_test:
+            # Check if all of the input files exist.
+            for pattern in shlex.split(args.input_files):
+                if len(glob.glob(pattern)) == 0:
+                    log.error(f'No file matching "{pattern}" found')
+                    log.info("")
+                    log.info(
+                        f"Did you call `{self.script_name} get-data`? If you did, "
+                        "check GET_DATA_CMD and INPUT_FILES in the Qleverfile"
+                    )
+                    return False
 
         # When running natively, check if the binary exists and works.
         if args.system == "native":
@@ -89,15 +90,15 @@ class IndexCommand(QleverCommand):
                     "which means that data loading is in progress. Please wait..."
                 )
                 return False
-
-        if len([p.name for p in Path.cwd().glob("*.sst")]) != 0:
-            log.error(
-                "Index files (*.sst) found in current directory "
-                "which shows presence of a previous index"
-            )
-            log.info("")
-            log.info("Aborting the index operation...")
-            return False
+        if not called_from_conformance_test:
+            if len([p.name for p in Path.cwd().glob("*.sst")]) != 0:
+                log.error(
+                    "Index files (*.sst) found in current directory "
+                    "which shows presence of a previous index"
+                )
+                log.info("")
+                log.info("Aborting the index operation...")
+                return False
         show_output = not called_from_conformance_test
         # Run the index command.
         try:

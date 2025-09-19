@@ -225,7 +225,7 @@ def run_protocol_test(
         else:
             encoding = 'utf-8'
         tn.write(request_head.encode('utf-8') + request_body.encode(encoding))
-        tn_response = tn.read_all().decode('utf-8')
+        tn_response = tn.read_until(b"\r\n\r\n", timeout=1.7).decode('utf-8')
         got_responses.append(tn_response)
         matching, newpath = compare_response(response, tn_response, 'SELECT' in request_with_reponse)
         status.append(matching)
