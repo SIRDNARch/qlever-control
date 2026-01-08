@@ -47,7 +47,6 @@ def run_command(
 
     TODO: Find the executable for `bash` in `__init__.py`.
     """
-
     subprocess_args = {
         "executable": shutil.which("bash"),
         "shell": True,

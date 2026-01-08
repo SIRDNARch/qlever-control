@@ -193,6 +193,8 @@ class QleverConfig:
         subparsers.required = True
         all_args = Qleverfile.all_arguments()
         for command_name, command_object in command_objects.items():
+            print(command_name)
+            print(command_object)
             self.add_subparser_for_command(
                     subparsers, command_name, command_object,
                     all_args, qleverfile_config)
