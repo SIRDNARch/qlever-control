@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=64.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -31,6 +31,7 @@ bugtracker = "https://github.com/ad-freiburg/qlever/issues"
 
 [project.scripts]
 "qlever" = "qlever.qlever_main:main"
+"sparql_conformance" = "qlever.qlever_main:main"
 
 [tool.setuptools]
 package-data = { "qlever" = ["Qleverfiles/*"] }

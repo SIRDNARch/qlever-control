@@ -176,7 +176,7 @@ class StartCommand(QleverCommand):
             f"{key}=" for key in Qleverfile.SERVER_RUNTIME_PARAMETERS
         ]
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test = False) -> bool:
         # Set the endpoint URL.
         args.endpoint_url = f"http://{args.host_name}:{args.port}"
 
@@ -282,8 +282,9 @@ class StartCommand(QleverCommand):
                 f" (Ctrl-C stops following the log, but NOT the server)"
             )
         log.info("")
-        tail_cmd = f"exec tail -f {args.name}.server-log.txt"
-        tail_proc = subprocess.Popen(tail_cmd, shell=True)
+        if not called_from_conformance_test:
+            tail_cmd = f"exec tail -f {args.name}.server-log.txt"
+            tail_proc = subprocess.Popen(tail_cmd, shell=True)
         while not is_qlever_server_alive(args.endpoint_url):
             time.sleep(1)
 
@@ -303,7 +304,7 @@ class StartCommand(QleverCommand):
                 return False
 
         # Kill the tail process. NOTE: `tail_proc.kill()` does not work.
-        if not args.run_in_foreground:
+        if not args.run_in_foreground and not called_from_conformance_test:
             tail_proc.terminate()
 
         # Execute the warmup command.
@@ -314,14 +315,14 @@ class StartCommand(QleverCommand):
                 return False
 
         # Show cache stats.
-        if not args.run_in_foreground:
+        if not args.run_in_foreground and not called_from_conformance_test:
             log.info("")
             args.detailed = False
             args.sparql_endpoint = None
             CacheStatsCommand().execute(args)
 
         # Apply settings if any.
-        if args.runtime_parameters:
+        if args.runtime_parameters and not called_from_conformance_test:
             log.info("")
             SettingsCommand().execute(args)
 
