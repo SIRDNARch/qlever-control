@@ -244,14 +244,24 @@ class TestSuite:
                 
                 # If the update query was successful, retrieve the current state of all graphs
                 # and check if the results match the expected results.
-                if query_update_result[0] == 200:
+                if 200 <= query_update_result[0] < 300:
                     actual_state_of_graphs = []
                     expected_state_of_graphs = []
-                    # Handle default graph that has no uri 
+                    # Handle default graph that has no uri
+                    if isinstance(self.engine_manager, QLeverManager):
+                        default_graph_query = (
+                            "CONSTRUCT {?s ?p ?o} WHERE { "
+                            "GRAPH ql:default-graph {?s ?p ?o}}"
+                        )
+                    else:
+                        default_graph_query = (
+                            "CONSTRUCT {?s ?p ?o} WHERE { ?s ?p ?o }"
+                        )
                     construct_graph = self.engine_manager.query(
                         self.config,
-                        "CONSTRUCT {?s ?p ?o} WHERE { GRAPH ql:default-graph {?s ?p ?o}}",
-                        "ttl")
+                        default_graph_query,
+                        "ttl",
+                    )
                     actual_state_of_graphs.append(construct_graph[1])
                     expected_state_of_graphs.append(test.result_file)
                     

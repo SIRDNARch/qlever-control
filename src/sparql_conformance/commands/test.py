@@ -3,6 +3,7 @@ from pathlib import Path
 from qlever.command import QleverCommand
 from qlever.log import log
 from sparql_conformance.config import Config
+from sparql_conformance.engines.blazegraph_manager import BlazegraphManager
 from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.testsuite import TestSuite
 from sparql_conformance.engines.engine_manager import EngineManager
@@ -13,6 +14,7 @@ def get_engine_manager(engine_type: str) -> EngineManager:
     """Get the appropriate engine manager for the given engine type"""
     managers = {
         'qlever': QLeverManager,
+        'blazegraph': BlazegraphManager,
         # 'mdb': MDBManager,
         # 'oxigraph': OxigraphManager
     }
@@ -33,6 +35,7 @@ class TestCommand(QleverCommand):
         self.options = [
             'qlever',
             'qlever-binaries',
+            'blazegraph',
             # 'mdb',
             # 'oxigraph'
         ]
@@ -50,7 +53,8 @@ class TestCommand(QleverCommand):
                             "type_alias", "exclude", "include", "binaries_directory"],
             "runtime": ["system"],
             "qlever": ["qlever_image"],
-            "oxigraph": ["oxigraph_image"]
+            "oxigraph": ["oxigraph_image"],
+            "blazegraph": ["blazegraph_image"],
         }
 
     def additional_arguments(self, subparser):
@@ -62,7 +66,7 @@ class TestCommand(QleverCommand):
             return False
         image = getattr(args, f"{args.engine}_image", None)
         if (args.system == "native" and args.binaries_directory == "" or
-                args.system != "native" and image is None):
+                args.system != "native" and image is None and args.engine != "blazegraph"):
             log.error(
                 f"Selected system {args.system} not compatible with image: {image}"
                 f" and binaries_directory: {args.binaries_directory}"
@@ -72,6 +76,8 @@ class TestCommand(QleverCommand):
         if args.testsuite_dir is None or not Path(args.testsuite_dir).is_dir():
             log.error("Could not find testsuite directory. Use `sparql_conformance setup` to download it.")
             return False
+        if args.engine == "blazegraph" and args.graph_store == "sparql":
+            args.graph_store = "blazegraph/namespace/kb/sparql"
         alias = [tuple(x) for x in args.type_alias] if args.type_alias else []
         config = Config(image, args.system, args.port, args.graph_store, args.testsuite_dir, alias,
                         args.binaries_directory, args.exclude, args.include)

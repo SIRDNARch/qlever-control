@@ -99,7 +99,7 @@ class Qleverfile:
         args["engine"] = arg(
             "--engine",
             type=str,
-            choices=["qlever", "qlever-binaries"],# "mdb", "oxigraph"],
+            choices=["qlever", "qlever-binaries", "blazegraph"],# "mdb", "oxigraph"],
             default="docker",
             help="Which system to use to run the tests in"
         )
@@ -152,6 +152,7 @@ class Qleverfile:
         qlever_binaries_args = all_args["qlever_binaries"] = {}
         qlever_args = all_args["qlever"] = {}
         oxigraph_args = all_args["oxigraph"] = {}
+        blazegraph_args = all_args["blazegraph"] = {}
         conformance_ui_args = all_args["conformance_ui"] = {}
 
         data_args["name"] = arg(
@@ -495,6 +496,13 @@ class Qleverfile:
             "--oxigraph-image",
             type=str,
             default="ghcr.io/oxigraph/oxigraph",
+            help="The name of the image when running in a container",
+        )
+
+        blazegraph_args["blazegraph_image"] = arg(
+            "--blazegraph-image",
+            type=str,
+            default="adfreiburg/qblazegraph",
             help="The name of the image when running in a container",
         )
 

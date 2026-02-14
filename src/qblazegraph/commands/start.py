@@ -113,7 +113,7 @@ class StartCommand(QleverCommand):
             ports=[(args.port, args.port)],
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         jar_path = (
             args.blazegraph_jar
             if args.system == "native"
@@ -230,33 +230,36 @@ class StartCommand(QleverCommand):
             log.error(f"Starting the Jena server failed ({e})")
             return False
 
-        # Tail the server log until the server is ready (note that the `exec`
-        # is important to make sure that the tail process is killed and not
-        # just the bash process).
-        if args.run_in_foreground:
-            log.info(
-                "Follow the server logs as long as the server is"
-                " running (Ctrl-C stops the server)"
-            )
-        else:
-            log.info(
-                "Follow the server logs until the server is ready"
-                " (Ctrl-C stops following the log, but NOT the server)"
-            )
-        log.info("")
-        log_cmd = f"exec tail -f {args.name}.server-log.txt"
-        log_proc = subprocess.Popen(log_cmd, shell=True)
+        log_proc = None
+        if not called_from_conformance_test:
+            # Tail the server log until the server is ready (note that the
+            # `exec` is important to make sure that the tail process is killed
+            # and not just the bash process).
+            if args.run_in_foreground:
+                log.info(
+                    "Follow the server logs as long as the server is"
+                    " running (Ctrl-C stops the server)"
+                )
+            else:
+                log.info(
+                    "Follow the server logs until the server is ready"
+                    " (Ctrl-C stops following the log, but NOT the server)"
+                )
+            log.info("")
+            log_cmd = f"exec tail -f {args.name}.server-log.txt"
+            log_proc = subprocess.Popen(log_cmd, shell=True)
         while not is_server_alive(endpoint_url):
             time.sleep(1)
 
-        log.info(
-            f"Blazegraph server webapp for {args.name} will be available at "
-            f"http://{args.host_name}:{args.port} and the sparql endpoint for "
-            f"queries is {endpoint_url}/namespace/kb/sparql"
-        )
+        if not called_from_conformance_test:
+            log.info(
+                f"Blazegraph server webapp for {args.name} will be available "
+                f"at http://{args.host_name}:{args.port} and the sparql "
+                f"endpoint for queries is {endpoint_url}/namespace/kb/sparql"
+            )
 
         # Kill the log process
-        if not args.run_in_foreground:
+        if log_proc is not None and not args.run_in_foreground:
             log_proc.terminate()
 
         # With `--run-in-foreground`, wait until the server is stopped.
@@ -265,6 +268,7 @@ class StartCommand(QleverCommand):
                 process.wait()
             except KeyboardInterrupt:
                 process.terminate()
-            log_proc.terminate()
+            if log_proc is not None:
+                log_proc.terminate()
 
         return True
