@@ -1,13 +1,17 @@
 import bz2
+import io
 import json
 import os
 from typing import List, Dict, Tuple
+
+import rdflib
 
 import sparql_conformance.util as util
 from qlever.log import log
 from sparql_conformance.config import Config
 from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.engines.qlever import QLeverManager
+from sparql_conformance.engines.graphdb_manager import GraphdbManager
 from sparql_conformance.json_tools import compare_json
 from sparql_conformance.protocol_tools import run_protocol_test
 from sparql_conformance.rdf_tools import compare_ttl
@@ -85,6 +89,13 @@ class TestSuite:
             expected_graphs ([str]]): The expected state of each graph.
             graphs ([str]): The actual state of our graphs.
         """
+        if isinstance(self.engine_manager, GraphdbManager):
+            union_graph = rdflib.Graph()
+            for expected_graph in expected_graphs:
+                union_graph.parse(data=expected_graph, format="turtle")
+            expected_graphs = list(expected_graphs)
+            expected_graphs[0] = union_graph.serialize(format="turtle")
+
         status = [Status.FAILED for _ in range(len(expected_graphs))]
         error_type = [ErrorMessage.RESULTS_NOT_THE_SAME for _ in range(len(expected_graphs))]
         expected_html = ["" for _ in range(len(expected_graphs))]
@@ -448,8 +459,9 @@ class TestSuite:
             self.engine_manager.cleanup(self.config)
 
     def compress_json_bz2(self, input_data, output_filename):
-        with bz2.open(output_filename, "wt") as zipfile:
-            json.dump(input_data, zipfile, indent=4)
+        with bz2.BZ2File(output_filename, "w") as raw_file:
+            with io.TextIOWrapper(raw_file, encoding="utf-8") as zipfile:
+                json.dump(input_data, zipfile, indent=4)
         log.info("Done writing result file: " + output_filename)
 
     def generate_json_file(self):

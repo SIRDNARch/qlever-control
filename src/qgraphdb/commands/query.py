@@ -12,9 +12,11 @@ class QueryCommand(QoxigraphQueryCommand):
             qleverfile_args["data"] = ["name"]
         return qleverfile_args
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         if not args.sparql_endpoint:
             args.sparql_endpoint = (
                 f"{args.host_name}:{args.port}/repositories/{args.name}"
             )
-        super().execute(args)
+        return super().execute(
+            args, called_from_conformance_test=called_from_conformance_test
+        )

@@ -93,7 +93,7 @@ class IndexCommand(QleverCommand):
             working_directory="/opt/graphdb/home",
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         index_cmd = (
             f"{args.index_binary} preload {args.jvm_args} -c config.ttl"
         )
@@ -101,22 +101,28 @@ class IndexCommand(QleverCommand):
             index_cmd += " -f"
         if args.threads:
             index_cmd += f" -t {args.threads}"
-        index_cmd += (
-            f" -Dgraphdb.home={args.name}_index {args.extra_args} "
-            f"{args.input_files} | tee {args.name}.index-log.txt"
-        )
+        index_cmd += f" -Dgraphdb.home={args.name}_index {args.extra_args} "
+        if called_from_conformance_test:
+            index_cmd += (
+                f"{args.input_files} > {args.name}.index-log.txt 2>&1"
+            )
+        else:
+            index_cmd += (
+                f"{args.input_files} | tee {args.name}.index-log.txt"
+            )
 
         if args.system != "native":
             index_cmd = self.wrap_cmd_in_container(args, index_cmd)
 
         config_dict = self.construct_config_ttl_dict(args)
-        log.info(
-            "Following options of GraphDB config.ttl will be updated "
-            "with the values from Qleverfile as shown below:\n"
-        )
-        for option, value in config_dict.items():
-            log.info(f"{option} = {value}")
-        log.info("")
+        if not called_from_conformance_test:
+            log.info(
+                "Following options of GraphDB config.ttl will be updated "
+                "with the values from Qleverfile as shown below:\n"
+            )
+            for option, value in config_dict.items():
+                log.info(f"{option} = {value}")
+            log.info("")
 
         # Show the command line.
         self.show(index_cmd, only_show=args.show)
@@ -164,7 +170,9 @@ class IndexCommand(QleverCommand):
         # Run the index command.
         try:
             self.update_config_ttl(config_dict)
-            util.run_command(index_cmd, show_output=True)
+            util.run_command(
+                index_cmd, show_output=not called_from_conformance_test
+            )
         except Exception as e:
             log.error(f"Building the index failed: {e}")
             return False

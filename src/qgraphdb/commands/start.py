@@ -76,7 +76,7 @@ class StartCommand(QleverCommand):
             ports=[(args.port, args.port)],
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         license_file_path = (
             str(args.license_file_path.resolve())
             if args.system == "native"
@@ -124,30 +124,33 @@ class StartCommand(QleverCommand):
             log.error(f"Starting the GraphDB server failed ({e})")
             return False
 
+        log_proc = None
         # Tail the server log until the server is ready (note that the `exec`
         # is important to make sure that the tail process is killed and not
         # just the bash process).
-        if args.run_in_foreground:
-            log.info(
-                "Follow the server logs as long as the server is"
-                " running (Ctrl-C stops the server)"
-            )
-        else:
-            log.info(
-                "Follow the server logs until the server is ready"
-                " (Ctrl-C stops following the log, but NOT the server)"
-            )
-        log.info("")
-        log_cmd = f"exec tail -f {args.name}.server-log.txt"
-        log_proc = subprocess.Popen(log_cmd, shell=True)
-        time.sleep(2)
+        if not called_from_conformance_test:
+            if args.run_in_foreground:
+                log.info(
+                    "Follow the server logs as long as the server is"
+                    " running (Ctrl-C stops the server)"
+                )
+            else:
+                log.info(
+                    "Follow the server logs until the server is ready"
+                    " (Ctrl-C stops following the log, but NOT the server)"
+                )
+            log.info("")
+            log_cmd = f"exec tail -f {args.name}.server-log.txt"
+            log_proc = subprocess.Popen(log_cmd, shell=True)
+            time.sleep(2)
         while not util.is_server_alive(endpoint_url):
             time.sleep(1)
 
-        log.info(f"GraphDB sparql endpoint for queries is {endpoint_url}")
+        if not called_from_conformance_test:
+            log.info(f"GraphDB sparql endpoint for queries is {endpoint_url}")
 
         # Kill the log process
-        if not args.run_in_foreground:
+        if not args.run_in_foreground and log_proc:
             log_proc.terminate()
 
         # With `--run-in-foreground`, wait until the server is stopped.
@@ -156,6 +159,7 @@ class StartCommand(QleverCommand):
                 process.wait()
             except KeyboardInterrupt:
                 process.terminate()
-            log_proc.terminate()
+            if log_proc:
+                log_proc.terminate()
 
         return True

@@ -99,7 +99,7 @@ class Qleverfile:
         args["engine"] = arg(
             "--engine",
             type=str,
-            choices=["qlever", "qlever-binaries", "blazegraph"],# "mdb", "oxigraph"],
+            choices=["qlever", "qlever-binaries", "blazegraph", "graphdb"],# "mdb", "oxigraph"],
             default="docker",
             help="Which system to use to run the tests in"
         )
@@ -153,6 +153,7 @@ class Qleverfile:
         qlever_args = all_args["qlever"] = {}
         oxigraph_args = all_args["oxigraph"] = {}
         blazegraph_args = all_args["blazegraph"] = {}
+        graphdb_args = all_args["graphdb"] = {}
         conformance_ui_args = all_args["conformance_ui"] = {}
 
         data_args["name"] = arg(
@@ -503,6 +504,13 @@ class Qleverfile:
             "--blazegraph-image",
             type=str,
             default="adfreiburg/qblazegraph",
+            help="The name of the image when running in a container",
+        )
+
+        graphdb_args["graphdb_image"] = arg(
+            "--graphdb-image",
+            type=str,
+            default="docker.io/ontotext/graphdb:11.2.1",
             help="The name of the image when running in a container",
         )
 
