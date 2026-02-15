@@ -54,12 +54,15 @@ class IndexCommand(QleverCommand):
             use_bash=False,
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         cmds_to_execute = []
+        log_suffix = f"|& tee {args.name}.index-log.txt"
+        if called_from_conformance_test:
+            log_suffix = f"> {args.name}.index-log.txt 2>&1"
         index_cmd = (
             f"load {'--lenient ' if args.lenient else ''}"
             f"--location {args.name}_index/ --file {args.input_files} "
-            f"{args.extra_args} |& tee {args.name}.index-log.txt"
+            f"{args.extra_args} {log_suffix}"
         )
 
         ulimit = args.ulimit
@@ -123,19 +126,28 @@ class IndexCommand(QleverCommand):
 
         # Run the index command.
         try:
-            util.run_command(index_cmd, show_output=True, show_stderr=True)
+            show_output = not called_from_conformance_test
+            util.run_command(
+                index_cmd,
+                show_output=show_output,
+                show_stderr=show_output,
+            )
         except Exception as e:
             log.error(f"Building the index failed: {e}")
             return False
 
         if optimize_cmd:
             try:
-                log.info("")
-                log.info(
-                    f"Optimizing read-only database storage: {optimize_cmd}"
-                )
+                if not called_from_conformance_test:
+                    log.info("")
+                    log.info(
+                        "Optimizing read-only database storage: "
+                        f"{optimize_cmd}"
+                    )
                 util.run_command(
-                    optimize_cmd, show_output=True, show_stderr=True
+                    optimize_cmd,
+                    show_output=show_output,
+                    show_stderr=show_output,
                 )
             except Exception as e:
                 log.error(f"Optimizing the database storage failed: {e}")

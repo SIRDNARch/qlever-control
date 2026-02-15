@@ -31,6 +31,7 @@ def prepare_request(engine_manager: EngineManager, test: TestObject, request_wit
             before_header = False
             index_header = index
             line = line.replace('sparql', engine_manager.protocol_endpoint())
+            request_lines[index] = line
         if line.startswith('GET') and not line.endswith('HTTP/1.1'):
             request_lines[index] = line + ' HTTP/1.1'
     request_header_lines = request_lines[index_header:index_line_between]

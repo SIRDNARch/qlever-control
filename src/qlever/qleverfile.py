@@ -106,7 +106,8 @@ class Qleverfile:
                 "graphdb",
                 "jena",
                 "mdb",
-            ],  # "mdb", "oxigraph"],
+                "oxigraph",
+            ],
             default="docker",
             help="Which system to use to run the tests in"
         )

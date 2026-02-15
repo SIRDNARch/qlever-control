@@ -7,6 +7,7 @@ from sparql_conformance.engines.blazegraph_manager import BlazegraphManager
 from sparql_conformance.engines.graphdb_manager import GraphdbManager
 from sparql_conformance.engines.jena_manager import JenaManager
 from sparql_conformance.engines.mdb_manager import MdbManager
+from sparql_conformance.engines.oxigraph_manager import OxigraphManager
 from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.testsuite import TestSuite
 from sparql_conformance.engines.engine_manager import EngineManager
@@ -22,7 +23,7 @@ def get_engine_manager(engine_type: str) -> EngineManager:
         'graphdb': GraphdbManager,
         'jena': JenaManager,
         'mdb': MdbManager,
-        # 'oxigraph': OxigraphManager
+        'oxigraph': OxigraphManager
     }
 
     manager_class = managers.get(engine_type)
@@ -45,7 +46,7 @@ class TestCommand(QleverCommand):
             'graphdb',
             'jena',
             'mdb',
-            # 'oxigraph'
+            'oxigraph'
         ]
 
     def description(self) -> str:

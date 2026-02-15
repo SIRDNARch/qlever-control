@@ -50,7 +50,10 @@ class QueryCommand(QleverQueryCommand):
         if not args.sparql_endpoint:
             args.sparql_endpoint = f"{args.host_name}:{args.port}/query"
         args.pin_to_cache = None
-        args.access_token = None
+        if called_from_conformance_test:
+            args.access_token = ""
+        else:
+            args.access_token = None
         return super().execute(
             args, called_from_conformance_test=called_from_conformance_test
         )

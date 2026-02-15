@@ -52,23 +52,31 @@ class TestSuite:
         """
         status = Status.FAILED
         error_type = ErrorMessage.RESULTS_NOT_THE_SAME
-        if result_format == "srx":
-            status, error_type, expected_html, test_html, expected_red, test_red = compare_xml(
-                expected_string, query_result, self.config.alias, self.config.number_types)
-        elif result_format == "srj":
-            status, error_type, expected_html, test_html, expected_red, test_red = compare_json(
-                expected_string, query_result, self.config.alias, self.config.number_types)
-        elif result_format == "csv" or result_format == "tsv":
-            status, error_type, expected_html, test_html, expected_red, test_red = compare_sv(
-                expected_string, query_result, result_format, self.config.alias)
-        elif result_format == "ttl":
-            status, error_type, expected_html, test_html, expected_red, test_red = compare_ttl(
-                expected_string, query_result)
-        else:
-            expected_html = ""
-            test_html = ""
-            expected_red = ""
-            test_red = ""
+        expected_html = ""
+        test_html = ""
+        expected_red = ""
+        test_red = ""
+        try:
+            if result_format == "srx":
+                status, error_type, expected_html, test_html, expected_red, test_red = compare_xml(
+                    expected_string, query_result, self.config.alias, self.config.number_types)
+            elif result_format == "srj":
+                status, error_type, expected_html, test_html, expected_red, test_red = compare_json(
+                    expected_string, query_result, self.config.alias, self.config.number_types)
+            elif result_format == "csv" or result_format == "tsv":
+                status, error_type, expected_html, test_html, expected_red, test_red = compare_sv(
+                    expected_string, query_result, result_format, self.config.alias)
+            elif result_format == "ttl":
+                status, error_type, expected_html, test_html, expected_red, test_red = compare_ttl(
+                    expected_string, query_result)
+        except Exception as e:
+            status = Status.FAILED
+            error_type = ErrorMessage.FORMAT_ERROR
+            setattr(
+                test,
+                "query_log",
+                f"Format error: {e}\nResponse:\n{query_result}",
+            )
 
         self.update_test_status(test, status, error_type)
         setattr(test, "got_html", test_html)
