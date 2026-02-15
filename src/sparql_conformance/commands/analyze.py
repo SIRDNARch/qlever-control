@@ -8,6 +8,7 @@ from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.testsuite import TestSuite
 from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.engines.qlever import QLeverManager
+from sparql_conformance.util import warn_if_missing_image
 
 
 
@@ -73,6 +74,8 @@ class AnalyzeCommand(QleverCommand):
                 f" and binaries_directory: {binaries_directory}"
             )
             return False
+
+        warn_if_missing_image(args.system, image, args.engine)
 
         if args.testsuite_dir is None or not Path(args.testsuite_dir).is_dir():
             log.error("Could not find testsuite directory. Use `sparql_conformance setup` to download it.")

@@ -57,7 +57,7 @@ class IndexCommand(QleverCommand):
             working_directory="/data",
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         system = args.system
         input_files = args.input_files
 
@@ -85,7 +85,10 @@ class IndexCommand(QleverCommand):
             index_cmd += f" --prefixes {args.prefixes}"
         if args.extra_args:
             index_cmd += f" {args.extra_args}"
-        index_cmd += f" | tee {args.name}.index-log.txt"
+        if called_from_conformance_test:
+            index_cmd += f" > {args.name}.index-log.txt 2>&1"
+        else:
+            index_cmd += f" | tee {args.name}.index-log.txt"
 
         if args.system == "native":
             cmd_to_show = index_cmd
@@ -143,7 +146,9 @@ class IndexCommand(QleverCommand):
 
         # Run the index command.
         try:
-            util.run_command(index_cmd, show_output=True)
+            util.run_command(
+                index_cmd, show_output=not called_from_conformance_test
+            )
         except Exception as e:
             log.error(f"Building the index failed: {e}")
             return False

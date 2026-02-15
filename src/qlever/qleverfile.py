@@ -105,6 +105,7 @@ class Qleverfile:
                 "blazegraph",
                 "graphdb",
                 "jena",
+                "mdb",
             ],  # "mdb", "oxigraph"],
             default="docker",
             help="Which system to use to run the tests in"
@@ -161,6 +162,7 @@ class Qleverfile:
         blazegraph_args = all_args["blazegraph"] = {}
         graphdb_args = all_args["graphdb"] = {}
         jena_args = all_args["jena"] = {}
+        mdb_args = all_args["mdb"] = {}
         conformance_ui_args = all_args["conformance_ui"] = {}
 
         data_args["name"] = arg(
@@ -525,6 +527,13 @@ class Qleverfile:
             "--jena-image",
             type=str,
             default="adfreiburg/qjena",
+            help="The name of the image when running in a container",
+        )
+
+        mdb_args["mdb_image"] = arg(
+            "--mdb-image",
+            type=str,
+            default="adfreiburg/millenniumdb",
             help="The name of the image when running in a container",
         )
 

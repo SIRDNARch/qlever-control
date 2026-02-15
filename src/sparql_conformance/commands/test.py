@@ -6,10 +6,12 @@ from sparql_conformance.config import Config
 from sparql_conformance.engines.blazegraph_manager import BlazegraphManager
 from sparql_conformance.engines.graphdb_manager import GraphdbManager
 from sparql_conformance.engines.jena_manager import JenaManager
+from sparql_conformance.engines.mdb_manager import MdbManager
 from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.testsuite import TestSuite
 from sparql_conformance.engines.engine_manager import EngineManager
 from sparql_conformance.engines.qlever import QLeverManager
+from sparql_conformance.util import warn_if_missing_image
 
 
 def get_engine_manager(engine_type: str) -> EngineManager:
@@ -19,7 +21,7 @@ def get_engine_manager(engine_type: str) -> EngineManager:
         'blazegraph': BlazegraphManager,
         'graphdb': GraphdbManager,
         'jena': JenaManager,
-        # 'mdb': MDBManager,
+        'mdb': MdbManager,
         # 'oxigraph': OxigraphManager
     }
 
@@ -42,7 +44,7 @@ class TestCommand(QleverCommand):
             'blazegraph',
             'graphdb',
             'jena',
-            # 'mdb',
+            'mdb',
             # 'oxigraph'
         ]
 
@@ -63,6 +65,7 @@ class TestCommand(QleverCommand):
             "blazegraph": ["blazegraph_image"],
             "graphdb": ["graphdb_image"],
             "jena": ["jena_image"],
+            "mdb": ["mdb_image"],
         }
 
     def additional_arguments(self, subparser):
@@ -80,6 +83,8 @@ class TestCommand(QleverCommand):
                 f" and binaries_directory: {args.binaries_directory}"
             )
             return False
+
+        warn_if_missing_image(args.system, image, args.engine)
 
         if args.testsuite_dir is None or not Path(args.testsuite_dir).is_dir():
             log.error("Could not find testsuite directory. Use `sparql_conformance setup` to download it.")

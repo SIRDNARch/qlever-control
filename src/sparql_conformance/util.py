@@ -7,6 +7,7 @@ from typing import Optional
 from urllib.parse import urlparse, unquote
 
 from qlever.log import log
+from qlever.util import get_container_image_id
 from sparql_conformance.config import Config
 
 
@@ -175,3 +176,22 @@ def get_accept_header(result_format: str) -> str:
         "json": "application/sparql-results+json"
     }
     return format_headers.get(result_format, "application/sparql-results+json")
+
+
+def warn_if_missing_image(system: str, image: str | None, engine: str) -> None:
+    if system == "native" or not image:
+        return
+    image_id = get_container_image_id(system, image)
+    if image_id:
+        return
+    warning = (
+        f"Container image {image} not found locally. "
+        "It is preferred to prebuild or pull the image, otherwise this run "
+        "may be slow and errors may be less clear."
+    )
+    if engine == "mdb":
+        warning += (
+            " MillenniumDB will attempt to build from its GitHub Dockerfile "
+            "if the image is missing."
+        )
+    log.warning(warning)

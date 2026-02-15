@@ -356,13 +356,54 @@ def compare_xml(
     Returns:
         tuple (str,str,str,str,str,str): A tuple containing the status, error type and the strings XML1, XML2, XML1 RED, XML2 RED
     """
-    query_xml = md.parseString(query_xml).toxml()
-    query_xml = md.parseString(query_xml).toprettyxml(indent="  ")
-    map_bnodes = {}
     status = Status.FAILED
     error_type = ErrorMessage.RESULTS_NOT_THE_SAME
-    expected_tree = ET.ElementTree(ET.fromstring(expected_xml))
-    query_tree = ET.ElementTree(ET.fromstring(query_xml))
+    try:
+        query_xml = md.parseString(query_xml).toxml()
+        query_xml = md.parseString(query_xml).toprettyxml(indent="  ")
+    except Exception as e:
+        error_type = ErrorMessage.FORMAT_ERROR
+        escaped_expected = f'<label class="red">{escape(expected_xml)}</label>'
+        escaped_query = f'<label class="red">{escape(query_xml)}</label>'
+        return (
+            status,
+            error_type,
+            escape(expected_xml),
+            escaped_query,
+            escaped_expected,
+            f'<label class="red">{e}</label>',
+        )
+
+    try:
+        expected_tree = ET.ElementTree(ET.fromstring(expected_xml))
+    except Exception as e:
+        error_type = ErrorMessage.FORMAT_ERROR
+        escaped_expected = f'<label class="red">{escape(expected_xml)}</label>'
+        return (
+            Status.NOT_TESTED,
+            error_type,
+            escaped_expected,
+            escape(query_xml),
+            f'<label class="red">{e}</label>',
+            escape(query_xml),
+        )
+
+    try:
+        query_tree = ET.ElementTree(ET.fromstring(query_xml))
+    except Exception as e:
+        error_type = ErrorMessage.FORMAT_ERROR
+        escaped_expected = f'<label class="red">{escape(expected_xml)}</label>'
+        escaped_query = f'<label class="red">{escape(query_xml)}</label>'
+        return (
+            status,
+            error_type,
+            escape(expected_xml),
+            escaped_query,
+            escaped_expected,
+            f'<label class="red">{e}</label>',
+        )
+
+    map_bnodes = {}
 
     # Compare and remove equal elements in <head>
     head1 = expected_tree.find(
