@@ -4,7 +4,18 @@ from qoxigraph.commands.query import QueryCommand as QoxigraphQueryCommand
 
 
 class QueryCommand(QoxigraphQueryCommand):
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         if not args.sparql_endpoint:
             args.sparql_endpoint = f"{args.host_name}:{args.port}/sparql"
-        return super().execute(args)
+        if called_from_conformance_test and not hasattr(args, "curl_max_time"):
+            args.curl_max_time = 35
+        if called_from_conformance_test:
+            default_graph = getattr(args, "default_graph_uri", None)
+            if default_graph and "define input:default-graph-uri" not in args.query.lower():
+                args.query = (
+                    f"DEFINE input:default-graph-uri <{default_graph}>\n"
+                    f"{args.query}"
+                )
+        return super().execute(
+            args, called_from_conformance_test=called_from_conformance_test
+        )

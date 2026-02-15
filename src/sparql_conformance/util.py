@@ -64,6 +64,7 @@ def make_args(config: Config, **overrides):
         encode_as_id=None,
         add_has_word_triples=False,
         runtime_parameters=False,
+        extend_existing_index=False,
     )
     return Namespace(**{**base, **overrides})
 

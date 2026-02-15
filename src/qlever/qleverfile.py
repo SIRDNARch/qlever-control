@@ -107,6 +107,7 @@ class Qleverfile:
                 "jena",
                 "mdb",
                 "oxigraph",
+                "virtuoso",
             ],
             default="docker",
             help="Which system to use to run the tests in"
@@ -164,6 +165,7 @@ class Qleverfile:
         graphdb_args = all_args["graphdb"] = {}
         jena_args = all_args["jena"] = {}
         mdb_args = all_args["mdb"] = {}
+        virtuoso_args = all_args["virtuoso"] = {}
         conformance_ui_args = all_args["conformance_ui"] = {}
 
         data_args["name"] = arg(
@@ -503,6 +505,11 @@ class Qleverfile:
             help="The name of the image when running in a container",
         )
 
+        from qoxigraph.commands.setup_config import SetupConfigCommand
+        from qvirtuoso.commands.setup_config import (
+            SetupConfigCommand as VirtuosoSetupConfigCommand,
+        )
+
         oxigraph_args["oxigraph_image"] = arg(
             "--oxigraph-image",
             type=str,
@@ -535,6 +542,13 @@ class Qleverfile:
             "--mdb-image",
             type=str,
             default="adfreiburg/millenniumdb",
+            help="The name of the image when running in a container",
+        )
+
+        virtuoso_args["virtuoso_image"] = arg(
+            "--virtuoso-image",
+            type=str,
+            default=VirtuosoSetupConfigCommand.IMAGE,
             help="The name of the image when running in a container",
         )
 

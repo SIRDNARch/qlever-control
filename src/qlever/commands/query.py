@@ -111,6 +111,11 @@ class QueryCommand(QleverCommand):
             curl_cmd_additions += f" -w '\\nHTTP_STATUS:%{{http_code}}'"
             query_type = args.content_type
             curl_cmd_additions += f" --data-urlencode access-token={shlex.quote(args.access_token)}"
+            max_time = getattr(args, "curl_max_time", None)
+            if max_time:
+                curl_cmd_additions += (
+                    f" --max-time {shlex.quote(str(max_time))}"
+                )
 
         # Show what the command will do.
         sparql_endpoint = (

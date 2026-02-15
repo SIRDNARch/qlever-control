@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 import time
 from pathlib import Path
 
@@ -11,6 +12,22 @@ from qlever.log import log
 from qvirtuoso.commands.stop import StopCommand
 
 
+def download_virtuoso_ini(target_path: Path) -> bool:
+    from qvirtuoso.commands.setup_config import SetupConfigCommand
+
+    try:
+        util.run_command(
+            f"curl -sSf -o {target_path} {SetupConfigCommand.VIRTUOSO_INI_URL}"
+        )
+        return True
+    except Exception as e:
+        log.error(
+            "Couldn't download the virtuoso.ini configuration file. "
+            f"Error -> {e}"
+        )
+        return False
+
+
 def construct_ini_sed_cmd(
     arg_name: str, section: str, option: str, new_value: str
 ) -> str:
@@ -19,9 +36,21 @@ def construct_ini_sed_cmd(
     if it exists or append the new option with the value right after the
     section header.
     """
+    sed_inplace = "sed -i"
+    append_cmd = (
+        f"{sed_inplace} '/^\\[{section}\\]/a {option} = {new_value}' "
+        f"{arg_name}.virtuoso.ini"
+    )
+    if sys.platform == "darwin":
+        sed_inplace = "sed -i ''"
+        append_cmd = (
+            f"{sed_inplace} '/^\\[{section}\\]/a\\\n"
+            f"{option} = {new_value}' {arg_name}.virtuoso.ini"
+        )
+
     sed_cmd = (
         # First: check if the option exists anywhere in the file
-        rf"grep -q '{option}' {arg_name}.virtuoso.ini && "
+        rf"grep -q '^[[:space:]]*{option}[[:space:]]*=' {arg_name}.virtuoso.ini && "
         # If the option exists:
         #   - 'sed -i' edits the file in place.
         #   - '/^\[{section}\]/,/^\[/' limits the search range to the given section:
@@ -33,12 +62,12 @@ def construct_ini_sed_cmd(
         #         • [a-zA-Z0-9:.-]* → match the old value (alphanumeric, colon, dot, dash).
         #         • Replace with \1{new_value} → keep "option =" (the captured group) and
         #           replace the old value with the new one.
-        rf"sed -i '/^\[{section}\]/,/^\[/ s/^\({option}[[:space:]]*=[[:space:]]*\)"
+        rf"{sed_inplace} '/^\[{section}\]/,/^\[/ s/^\({option}[[:space:]]*=[[:space:]]*\)"
         rf"[a-zA-Z0-9:.-]*/\1{new_value}/' {arg_name}.virtuoso.ini || "
         # If the option does NOT exist:
         #   - '/^\[{section}\]/a {option} = {new_value}' appends the line
         #     "option = new_value" right after the section header line [section].
-        rf"sed -i '/^\[{section}\]/a {option} = {new_value}' {arg_name}.virtuoso.ini"
+        rf"{append_cmd}"
     )
     return sed_cmd
 
@@ -198,9 +227,10 @@ class IndexCommand(QleverCommand):
             container_name=args.index_container,
             volumes=[("$(pwd)", "/database")],
             ports=[(args.port, args.port)],
+            working_directory="/database",
             use_bash=True,
         )
-        exec_cmd = f"{args.system} exec {args.index_container}"
+        exec_cmd = f"{args.system} exec -w /database {args.index_container}"
 
         ld_dir_cmd = f"{exec_cmd} {ld_dir_cmd}"
         separator = " " if len(run_cmds) > 2 else "; "
@@ -208,14 +238,27 @@ class IndexCommand(QleverCommand):
 
         return start_cmd, ld_dir_cmd, run_cmd
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         num_parallel_loaders = args.num_parallel_loaders
         start_cmd = f"{args.server_binary} -c {args.name}.virtuoso.ini"
 
         isql_cmd = f"{args.index_binary} {args.isql_port} dba dba"
-        ld_dir_cmd = (
-            isql_cmd + f" exec=\"ld_dir('.', '{args.input_files}', '');\""
-        )
+        graph_files = getattr(args, "graph_files", None)
+        graph_names = getattr(args, "graph_names", None)
+        default_graph = getattr(args, "default_graph_uri", "")
+        ld_dir_cmds = []
+        if graph_files and graph_names and len(graph_files) == len(graph_names):
+            for graph_file, graph_name in zip(graph_files, graph_names):
+                target_graph = default_graph if graph_name == "-" else graph_name
+                ld_dir_cmds.append(
+                    isql_cmd
+                    + f" exec=\"ld_dir('.', '{graph_file}', '{target_graph}');\""
+                )
+        else:
+            ld_dir_cmds = [
+                isql_cmd
+                + f" exec=\"ld_dir('.', '{args.input_files}', '');\""
+            ]
         if num_parallel_loaders > 1:
             run_cmds = [
                 f"{isql_cmd} exec='rdf_loader_run();' &"
@@ -230,9 +273,11 @@ class IndexCommand(QleverCommand):
         run_cmd_to_show = "\n".join(run_cmds)
         cmd_to_show = ""
         if args.system != "native":
-            start_cmd, ld_dir_cmd, run_cmd = self.wrap_cmd_in_container(
-                args, start_cmd, ld_dir_cmd, run_cmds
+            start_cmd, _, run_cmd = self.wrap_cmd_in_container(
+                args, start_cmd, "", run_cmds
             )
+            exec_cmd = f"{args.system} exec -w /database {args.index_container}"
+            ld_dir_cmds = [f"{exec_cmd} {cmd}" for cmd in ld_dir_cmds]
             run_cmd_to_show = run_cmd
             dockerfile_dir = Path(__file__).parent.parent
             dockerfile_path = dockerfile_dir / "Dockerfile"
@@ -246,15 +291,24 @@ class IndexCommand(QleverCommand):
 
         ini_files = [str(ini) for ini in Path(".").glob("*.ini")]
         if not Path(f"{args.name}.virtuoso.ini").exists():
-            self.show(
-                f"{args.name}.virtuoso.ini configfile not found in the current "
-                f"directory! {virtuoso_ini_help_msg(self.script_name, args, ini_files)}"
-            )
+            if called_from_conformance_test and not ini_files:
+                if download_virtuoso_ini(Path(f"{args.name}.virtuoso.ini")):
+                    ini_files = [f"{args.name}.virtuoso.ini"]
+            elif not called_from_conformance_test:
+                self.show(
+                    f"{args.name}.virtuoso.ini configfile not found in the current "
+                    f"directory! {virtuoso_ini_help_msg(self.script_name, args, ini_files)}"
+                )
 
         virtuoso_ini_config_dict = self.config_dict_for_update_ini(args)
-        log_virtuoso_ini_changes(args.name, virtuoso_ini_config_dict)
+        if not called_from_conformance_test:
+            log_virtuoso_ini_changes(args.name, virtuoso_ini_config_dict)
 
-        cmd_to_show += f"{start_cmd}\n\n{ld_dir_cmd}\n{run_cmd_to_show}"
+        cmd_to_show += (
+            f"{start_cmd}\n\n"
+            + "\n".join(ld_dir_cmds)
+            + f"\n{run_cmd_to_show}"
+        )
 
         # Show the command line.
         self.show(cmd_to_show, only_show=args.show)
@@ -337,7 +391,8 @@ class IndexCommand(QleverCommand):
         try:
             # Run the index container in detached mode
             util.run_command(start_cmd)
-            log.info("Waiting for Virtuoso server to be online...")
+            if not called_from_conformance_test:
+                log.info("Waiting for Virtuoso server to be online...")
             start_time = time.time()
             timeout = 60
             # Wait until the Virtuoso server is online
@@ -349,11 +404,19 @@ class IndexCommand(QleverCommand):
                     return False
                 time.sleep(1)
             # Execute the ld_dir and rdf_loader_run commands
-            log.info("Virtuoso server online! Loading data into Virtuoso...\n")
-            util.run_command(ld_dir_cmd, show_output=True)
-            util.run_command(run_cmd, show_output=True)
-            log.info("")
-            log.info("Data loading has finished!")
+            if not called_from_conformance_test:
+                log.info(
+                    "Virtuoso server online! Loading data into Virtuoso...\n"
+                )
+            for ld_dir_cmd in ld_dir_cmds:
+                util.run_command(
+                    ld_dir_cmd,
+                    show_output=not called_from_conformance_test,
+                )
+            util.run_command(run_cmd, show_output=not called_from_conformance_test)
+            if not called_from_conformance_test:
+                log.info("")
+                log.info("Data loading has finished!")
 
             # Construct args for Stop Command to stop running virtuoso-t process
             args.server_container = args.index_container

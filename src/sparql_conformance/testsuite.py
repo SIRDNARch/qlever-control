@@ -234,7 +234,10 @@ class TestSuite:
                     test.result_format)
                 if query_result[0] == 200:
                     self.evaluate_query(
-                        test.result_file, query_result[1], test, test.result_format)
+                        test.result_file,
+                        query_result[1],
+                        test,
+                        test.result_format)
                 else:
                     self.process_failed_response(test, query_result)
 

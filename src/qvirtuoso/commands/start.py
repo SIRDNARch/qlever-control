@@ -10,6 +10,7 @@ from qlever.containerize import Containerize
 from qlever.log import log
 from qlever.util import is_server_alive, run_command
 from qvirtuoso.commands.index import (
+    download_virtuoso_ini,
     log_virtuoso_ini_changes,
     update_virtuoso_ini,
     virtuoso_ini_help_msg,
@@ -85,6 +86,9 @@ class StartCommand(QleverCommand):
         config_dict["SPARQL"]["MaxQueryCostEstimationTime"] = "-1"
         config_dict["SPARQL"]["MaxConstructTriples"] = "0"
         config_dict["SPARQL"]["MaxQueryExecutionTime"] = str(timeout_s)
+        default_graph = getattr(args, "default_graph_uri", None)
+        if default_graph:
+            config_dict["SPARQL"]["DefaultGraph"] = default_graph
         return config_dict
 
     @staticmethod
@@ -100,9 +104,10 @@ class StartCommand(QleverCommand):
             container_name=args.server_container,
             volumes=[("$(pwd)", "/database")],
             ports=[(args.port, args.port)],
+            working_directory="/database",
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         start_cmd = (
             f"{args.server_binary} -c {args.name}.virtuoso.ini {args.extra_args} "
         )
@@ -114,14 +119,19 @@ class StartCommand(QleverCommand):
 
         ini_files = [str(ini) for ini in Path(".").glob("*.ini")]
         if not Path(f"{args.name}.virtuoso.ini").exists():
-            self.show(
-                f"{args.name}.virtuoso.ini configfile "
-                "not found in the current directory! "
-                f"{virtuoso_ini_help_msg(self.script_name, args, ini_files)}"
-            )
+            if called_from_conformance_test and not ini_files:
+                if download_virtuoso_ini(Path(f"{args.name}.virtuoso.ini")):
+                    ini_files = [f"{args.name}.virtuoso.ini"]
+            elif not called_from_conformance_test:
+                self.show(
+                    f"{args.name}.virtuoso.ini configfile "
+                    "not found in the current directory! "
+                    f"{virtuoso_ini_help_msg(self.script_name, args, ini_files)}"
+                )
 
         virtuoso_ini_config_dict = self.config_dict_for_update_ini(args)
-        log_virtuoso_ini_changes(args.name, virtuoso_ini_config_dict)
+        if not called_from_conformance_test:
+            log_virtuoso_ini_changes(args.name, virtuoso_ini_config_dict)
         # Show the command line.
         self.show(start_cmd, only_show=args.show)
         if args.show:
@@ -182,41 +192,45 @@ class StartCommand(QleverCommand):
             log.error(f"Starting the Virtuoso server failed ({e})")
             return False
 
-        # Tail the server log until the server is ready (note that the `exec`
-        # is important to make sure that the tail process is killed and not
-        # just the bash process).
-        if args.run_in_foreground:
-            log.info(
-                "Follow the server logs as long as the server is"
-                " running (Ctrl-C stops the server)"
-            )
-        else:
-            log.info(
-                "Follow the server logs until the server is ready"
-                " (Ctrl-C stops following the log, but NOT the server)"
-            )
-        log.info("")
-        log_cmd = f"exec tail -f {args.name}.server-log.txt"
-        log_proc = subprocess.Popen(log_cmd, shell=True)
+        log_proc = None
+        if not called_from_conformance_test:
+            # Tail the server log until the server is ready (note that the `exec`
+            # is important to make sure that the tail process is killed and not
+            # just the bash process).
+            if args.run_in_foreground:
+                log.info(
+                    "Follow the server logs as long as the server is"
+                    " running (Ctrl-C stops the server)"
+                )
+            else:
+                log.info(
+                    "Follow the server logs until the server is ready"
+                    " (Ctrl-C stops following the log, but NOT the server)"
+                )
+            log.info("")
+            log_cmd = f"exec tail -f {args.name}.server-log.txt"
+            log_proc = subprocess.Popen(log_cmd, shell=True)
         while not is_server_alive(endpoint_url):
             time.sleep(1)
 
-        log.info(
-            f"Virtuoso server webapp for {args.name} will be available "
-            f"at http://{args.host_name}:{args.port} and the sparql "
-            f"endpoint for queries is http://{args.host_name}:{args.port}/sparql"
-        )
+        if not called_from_conformance_test:
+            log.info(
+                f"Virtuoso server webapp for {args.name} will be available "
+                f"at http://{args.host_name}:{args.port} and the sparql "
+                f"endpoint for queries is http://{args.host_name}:{args.port}/sparql"
+            )
 
-        # Kill the log process
-        if not args.run_in_foreground:
-            log_proc.terminate()
+            # Kill the log process
+            if not args.run_in_foreground and log_proc is not None:
+                log_proc.terminate()
 
-        # With `--run-in-foreground`, wait until the server is stopped.
-        if args.run_in_foreground:
-            try:
-                process.wait()
-            except KeyboardInterrupt:
-                process.terminate()
-            log_proc.terminate()
+            # With `--run-in-foreground`, wait until the server is stopped.
+            if args.run_in_foreground:
+                try:
+                    process.wait()
+                except KeyboardInterrupt:
+                    process.terminate()
+                if log_proc is not None:
+                    log_proc.terminate()
 
         return True
