@@ -10,9 +10,11 @@ class QueryCommand(QoxigraphQueryCommand):
             "server": ["port", "host_name", "access_token"],
         }
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         if not args.sparql_endpoint:
             args.sparql_endpoint = (
                 f"{args.host_name}:{args.port}/{args.name}/query"
             )
-        super().execute(args)
+        return super().execute(
+            args, called_from_conformance_test=called_from_conformance_test
+        )

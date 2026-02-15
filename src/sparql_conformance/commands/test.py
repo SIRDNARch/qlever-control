@@ -5,6 +5,7 @@ from qlever.log import log
 from sparql_conformance.config import Config
 from sparql_conformance.engines.blazegraph_manager import BlazegraphManager
 from sparql_conformance.engines.graphdb_manager import GraphdbManager
+from sparql_conformance.engines.jena_manager import JenaManager
 from sparql_conformance.extract_tests import extract_tests
 from sparql_conformance.testsuite import TestSuite
 from sparql_conformance.engines.engine_manager import EngineManager
@@ -17,6 +18,7 @@ def get_engine_manager(engine_type: str) -> EngineManager:
         'qlever': QLeverManager,
         'blazegraph': BlazegraphManager,
         'graphdb': GraphdbManager,
+        'jena': JenaManager,
         # 'mdb': MDBManager,
         # 'oxigraph': OxigraphManager
     }
@@ -39,6 +41,7 @@ class TestCommand(QleverCommand):
             'qlever-binaries',
             'blazegraph',
             'graphdb',
+            'jena',
             # 'mdb',
             # 'oxigraph'
         ]
@@ -59,6 +62,7 @@ class TestCommand(QleverCommand):
             "oxigraph": ["oxigraph_image"],
             "blazegraph": ["blazegraph_image"],
             "graphdb": ["graphdb_image"],
+            "jena": ["jena_image"],
         }
 
     def additional_arguments(self, subparser):

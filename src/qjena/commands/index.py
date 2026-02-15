@@ -47,7 +47,7 @@ class IndexCommand(QleverCommand):
             working_directory="/opt/data",
         )
 
-    def execute(self, args) -> bool:
+    def execute(self, args, called_from_conformance_test: bool = False) -> bool:
         system = args.system
         input_files = args.input_files
 
@@ -56,7 +56,10 @@ class IndexCommand(QleverCommand):
             f"{args.index_binary} --threads {args.threads} --loc index "
             f"{args.extra_args} {input_files}"
         )
-        index_cmd += f" | tee {args.name}.index-log.txt"
+        if called_from_conformance_test:
+            index_cmd += f" > {args.name}.index-log.txt 2>&1"
+        else:
+            index_cmd += f" | tee {args.name}.index-log.txt"
 
         if args.system == "native":
             cmd_to_show = index_cmd
@@ -79,7 +82,7 @@ class IndexCommand(QleverCommand):
             return True
 
         # Check if all of the input files exist.
-        if not util.input_files_exist(input_files, self.script_name):
+        if not util.input_files_exist(input_files, self.script_name) and not called_from_conformance_test:
             return False
 
         # When running natively, check if the binary exists and works.
@@ -114,7 +117,9 @@ class IndexCommand(QleverCommand):
 
         # Run the index command.
         try:
-            util.run_command(index_cmd, show_output=True)
+            util.run_command(
+                index_cmd, show_output=not called_from_conformance_test
+            )
         except Exception as e:
             log.error(f"Building the index failed: {e}")
             return False
