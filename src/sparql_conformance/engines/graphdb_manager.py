@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import os
 from pathlib import Path
 
@@ -22,6 +23,7 @@ GRAPHDB_CONFIG_TTL_URL = (
     "565be93599bf4c3324147fb94b562595/repo-config.ttl"
 )
 DEFAULT_NAME = "qlever-sparql-conformance"
+DEFAULT_BASE_IRI = "http://example.org/"
 
 
 def _make_args(config: Config, **overrides):
@@ -50,6 +52,12 @@ def _graph_to_trig(turtle_data: str, graph_name: str) -> str:
     for triple in graph:
         context.add(triple)
     return str(dataset.serialize(format="trig"))
+
+
+def _ensure_base_iri(query: str) -> str:
+    if re.search(r"(?im)^\s*base\s+<", query or ""):
+        return query
+    return f"BASE <{DEFAULT_BASE_IRI}>\n{query}"
 
 
 def _license_file_path() -> Path:
@@ -139,6 +147,7 @@ class GraphdbManager(EngineManager):
         result_format: str,
         endpoint_suffix: str = "",
     ) -> tuple[int, str]:
+        query = _ensure_base_iri(query)
         args = _make_args(
             config,
             accept=_get_accept_header(result_format),
