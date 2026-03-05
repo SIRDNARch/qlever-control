@@ -1,6 +1,7 @@
-import telnetlib as telnet
 import re
 import json
+import socket
+import time
 from typing import Tuple
 
 from sparql_conformance.engines.engine_manager import EngineManager
@@ -101,6 +102,41 @@ def parse_chunked_response(response: str) -> str:
     # only extract the chunked body, and then parse it.
     headers, body = response.split('\r\n\r\n', 1)
     return parse_chunked_body(body)
+
+
+def send_raw_http(
+        server_address: str,
+        port: int,
+        request_head: str,
+        request_body: str,
+        encoding: str,
+        connect_timeout: float = 5.0,
+        idle_timeout: float = 5.0,
+        total_timeout: float = 30.0) -> str:
+    request_bytes = request_head.encode('utf-8') + request_body.encode(
+        encoding)
+    try:
+        with socket.create_connection(
+                (server_address, port), timeout=connect_timeout) as sock:
+            sock.settimeout(idle_timeout)
+            sock.sendall(request_bytes)
+            response_chunks = []
+            start_time = time.monotonic()
+            while True:
+                if time.monotonic() - start_time > total_timeout:
+                    break
+                try:
+                    chunk = sock.recv(4096)
+                except socket.timeout:
+                    if response_chunks:
+                        break
+                    return 'timed out waiting for response'
+                if not chunk:
+                    break
+                response_chunks.append(chunk)
+            return b''.join(response_chunks).decode('utf-8')
+    except Exception as e:
+        return str(e)
 
 def parse_chunked_body(response_body: str) -> str:
     """
@@ -218,21 +254,19 @@ def run_protocol_test(
         requests.append(request_head + request_body)
         response = prepare_response(test, request_with_reponse, newpath)
         responses.append(response)
-        tn = telnet.Telnet(server_address, int(port))
-        tn.sock.settimeout(5)
         if 'charset=UTF-16' in request_head:
             encoding = 'utf-16'
         else:
             encoding = 'utf-8'
-        tn.write(request_head.encode('utf-8') + request_body.encode(encoding))
-        try:
-            tn_response = tn.read_all().decode('utf-8')
-        except Exception as e:
-            tn_response = str(e)
+        tn_response = send_raw_http(
+            server_address,
+            int(port),
+            request_head,
+            request_body,
+            encoding)
         got_responses.append(tn_response)
         matching, newpath = compare_response(response, tn_response, 'SELECT' in request_with_reponse)
         status.append(matching)
-        tn.close()
     if all(status):
         result = Status.PASSED
         error_type = ''
