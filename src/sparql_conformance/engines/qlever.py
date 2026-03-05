@@ -100,7 +100,7 @@ class QLeverManager(EngineManager):
         return result, 'Success'
 
     def _start_server(self, config: Config) -> Tuple[bool, str]:
-        binary = 'ServerMain'
+        binary = 'qlever-server'
         binary = binary if config.system != 'native' else Path(config.path_to_binaries, binary)
         args = util.make_args(
             config,
@@ -119,7 +119,7 @@ class QLeverManager(EngineManager):
         return result, server_log
 
     def _index(self, config: Config, graph_paths: List[Tuple[str, str]]) -> Tuple[bool, str]:
-        binary = 'IndexBuilderMain'
+        binary = 'qlever-index'
         index_binary = binary if config.system != 'native' else Path(config.path_to_binaries, binary)
         args = util.make_args(
             config,
