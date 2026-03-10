@@ -96,6 +96,8 @@ class TestCommand(QleverCommand):
             return False
         if args.engine == "blazegraph" and args.graph_store == "sparql":
             args.graph_store = "blazegraph/namespace/kb/sparql"
+        if args.engine == "jena" and args.graph_store == "sparql":
+            args.graph_store = "qlever-sparql-conformance/data"
         alias = [tuple(x) for x in args.type_alias] if args.type_alias else []
         config = Config(image, args.system, args.port, args.graph_store, args.testsuite_dir, alias,
                         args.binaries_directory, args.exclude, args.include)
