@@ -73,10 +73,23 @@ class MdbManager(EngineManager):
         query: str,
         result_format: str,
     ) -> tuple[int, str]:
-        return self._query(config, query, "query=", result_format)
+        return self._query(
+            config,
+            query,
+            "application/x-www-form-urlencoded",
+            result_format,
+        )
 
     def update(self, config: Config, query: str) -> tuple[int, str]:
-        return 501, "update not supported"
+        return self._query(
+            config,
+            query,
+            "application/sparql-update",
+            "json",
+            sparql_endpoint=(
+                f"{config.server_address}:{config.port}/update"
+            ),
+        )
 
     def _query(
         self,
@@ -84,12 +97,14 @@ class MdbManager(EngineManager):
         query: str,
         content_type: str,
         result_format: str,
+        sparql_endpoint: str | None = None,
     ) -> tuple[int, str]:
         args = _make_args(
             config,
             accept=_get_accept_header(result_format),
             query=query,
             content_type=content_type,
+            sparql_endpoint=sparql_endpoint,
         )
         try:
             with mute_log():
