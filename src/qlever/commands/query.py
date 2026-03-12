@@ -116,6 +116,13 @@ class QueryCommand(QleverCommand):
                 curl_cmd_additions += (
                     f" --max-time {shlex.quote(str(max_time))}"
                 )
+        if called_from_conformance_test:
+            # This is needed for virtuoso updates using a user.
+            http_user = getattr(args, "http_user", None)
+            http_password = getattr(args, "http_password", None)
+            if http_user and http_password:
+                auth_value = f"{http_user}:{http_password}"
+                curl_cmd_additions += f" --anyauth -u {shlex.quote(auth_value)}"
 
         # Show what the command will do.
         sparql_endpoint = (

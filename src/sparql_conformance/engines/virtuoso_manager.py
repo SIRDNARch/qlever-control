@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 from qlever.log import mute_log
@@ -17,6 +18,9 @@ from sparql_conformance.rdf_tools import rdf_xml_to_turtle, write_ttl_file
 
 DEFAULT_NAME = "qlever-sparql-conformance"
 DEFAULT_GRAPH_URI = "urn:qlever:default-graph"
+UPDATE_USER = "qlever_update"
+UPDATE_PASSWORD = "qlever_update_pw"
+QUERY_USER = "SPARQL"
 
 
 def _make_args(config: Config, **overrides):
@@ -59,9 +63,23 @@ class VirtuosoManager(EngineManager):
         if not index_success:
             return index_success, server_success, index_log, ""
 
-        server_success, server_log = self._start_server(config)
+        server_success, server_log = self._start_server(
+            config,
+            graph_names=graph_names,
+        )
         if not server_success:
             return index_success, server_success, index_log, server_log
+        auth_success, auth_log = self._configure_update_auth(
+            config,
+            graph_names,
+        )
+        if not auth_success:
+            return (
+                index_success,
+                server_success,
+                index_log,
+                f"{server_log}\n{auth_log}",
+            )
         return index_success, server_success, index_log, server_log
 
     def cleanup(self, config: Config):
@@ -80,10 +98,24 @@ class VirtuosoManager(EngineManager):
         query: str,
         result_format: str,
     ) -> tuple[int, str]:
-        return self._query(config, query, "query=", result_format)
+        return self._query(
+            config,
+            query,
+            "query=",
+            result_format,
+            endpoint_suffix="/sparql",
+            use_http_auth=False,
+        )
 
     def update(self, config: Config, query: str) -> tuple[int, str]:
-        return self._query(config, query, "update=", "json")
+        return self._query(
+            config,
+            query,
+            "update=",
+            "json",
+            endpoint_suffix="/sparql-auth",
+            use_http_auth=True,
+        )
 
     def _query(
         self,
@@ -91,6 +123,8 @@ class VirtuosoManager(EngineManager):
         query: str,
         content_type: str,
         result_format: str,
+        endpoint_suffix: str,
+        use_http_auth: bool,
     ) -> tuple[int, str]:
         args = _make_args(
             config,
@@ -98,13 +132,22 @@ class VirtuosoManager(EngineManager):
             query=query,
             content_type=content_type,
         )
-        args.default_graph_uri = DEFAULT_GRAPH_URI
+        if self._should_set_default_graph_uri(query, content_type):
+            args.default_graph_uri = DEFAULT_GRAPH_URI
+        args.sparql_endpoint = (
+            f"{config.server_address}:{config.port}{endpoint_suffix}"
+        )
+        if use_http_auth:
+            args.http_user = UPDATE_USER
+            args.http_password = UPDATE_PASSWORD
         try:
             with mute_log():
                 qc = QueryCommand()
                 qc.execute(args, called_from_conformance_test=True)
                 query_output = str(qc.query_output)
-                body, _, status_line = query_output.rpartition("HTTP_STATUS:")
+                body, _, status_line = query_output.rpartition(
+                    "HTTP_STATUS:"
+                )
                 status_line = status_line.strip()
                 if not status_line:
                     return 1, query_output
@@ -148,7 +191,11 @@ class VirtuosoManager(EngineManager):
         index_log = _read_file(f"./{DEFAULT_NAME}.index-log.txt")
         return result, index_log
 
-    def _start_server(self, config: Config) -> tuple[bool, str]:
+    def _start_server(
+        self,
+        config: Config,
+        graph_names: list[str] | None = None,
+    ) -> tuple[bool, str]:
         server_binary = "virtuoso-t"
         if config.system == "native":
             server_binary = str(Path(config.path_to_binaries, server_binary))
@@ -161,6 +208,8 @@ class VirtuosoManager(EngineManager):
             timeout="30s",
         )
         args.default_graph_uri = DEFAULT_GRAPH_URI
+        if graph_names is not None:
+            args.graph_names = graph_names
         try:
             with mute_log():
                 result = StartCommand().execute(
@@ -236,3 +285,71 @@ class VirtuosoManager(EngineManager):
                 path.unlink()
             except FileNotFoundError:
                 continue
+
+    def _configure_update_auth(
+        self,
+        config: Config,
+        graph_names: list[str],
+    ) -> tuple[bool, str]:
+        graph_names_unique = list(dict.fromkeys(graph_names))
+        escaped_user = self._sql_quote(UPDATE_USER)
+        escaped_password = self._sql_quote(UPDATE_PASSWORD)
+        escaped_query_user = self._sql_quote(QUERY_USER)
+        sql_lines = [
+            "whenever sqlerror continue;",
+            f"DB.DBA.USER_CREATE('{escaped_user}', '{escaped_password}');",
+            f"DB.DBA.USER_SET_OPTION('{escaped_user}', 'SQL_ENABLE', '1');",
+            f"DB.DBA.USER_SET_OPTION('{escaped_user}', 'DAV_ENABLE', '1');",
+            "whenever sqlerror exit;",
+            f"ADD USER GROUP \"{escaped_user}\" \"SPARQL_UPDATE\";",
+            f"DB.DBA.RDF_DEFAULT_USER_PERMS_SET('{escaped_user}', 3, 0);",
+            "DB.DBA.RDF_DEFAULT_USER_PERMS_SET("
+            f"'{escaped_query_user}', 1, 0);",
+        ]
+        for graph_name in graph_names_unique:
+            if graph_name in ("", None):
+                continue
+            escaped_graph_name = self._sql_quote(graph_name)
+            sql_lines.append(
+                "DB.DBA.RDF_GRAPH_USER_PERMS_SET("
+                f"'{escaped_graph_name}', '{escaped_user}', 3);"
+            )
+            sql_lines.append(
+                "DB.DBA.RDF_GRAPH_USER_PERMS_SET("
+                f"'{escaped_graph_name}', '{escaped_query_user}', 1);"
+            )
+
+        sql = "\n".join(sql_lines)
+        isql_binary = "isql"
+        if config.system == "native":
+            isql_binary = str(Path(config.path_to_binaries, isql_binary))
+        full_cmd = (
+            f"cat <<'SQL' | {isql_binary} 1111 dba dba\n"
+            f"{sql}\n"
+            "SQL"
+        )
+        if config.system != "native":
+            container_name = _make_args(config).server_container
+            exec_cmd = f"{config.system} exec -w /database {container_name}"
+            full_cmd = f"{exec_cmd} bash -lc \"{full_cmd}\""
+        try:
+            with mute_log(50):
+                run_command(full_cmd)
+        except Exception as e:
+            return False, str(e)
+        return True, "Success"
+
+    @staticmethod
+    def _sql_quote(value: str) -> str:
+        return value.replace("'", "''")
+
+    @staticmethod
+    def _should_set_default_graph_uri(query: str, content_type: str) -> bool:
+        if content_type == "update=":
+            return True
+        query_lower = query.lower()
+        if "define input:default-graph-uri" in query_lower:
+            return False
+        if re.search(r"\bgraph\b", query_lower):
+            return False
+        return True
